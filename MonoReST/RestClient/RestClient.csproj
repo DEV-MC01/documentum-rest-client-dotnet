@@ -115,6 +115,7 @@
     <Compile Include="DataModel\D2\SearchConfiguration.cs" />
     <Compile Include="DataModel\Core\Document.cs" />
     <Compile Include="DataModel\Start\HomeDocumentExec.cs" />
+    <Compile Include="JSONclass.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Controller\Utility\LinkRelations.cs" />
     <Compile Include="Controller\Json\AbstractSerializer.cs" />
