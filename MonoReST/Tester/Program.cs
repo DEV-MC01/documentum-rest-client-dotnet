@@ -66,13 +66,18 @@ namespace Emc.Documentum.Rest.Test
                         {
                             trmToDocRefs.Add('"' + entry.content.properties.object_name + '"' 
                                 + ";" + '"' + propertyName + '"' + ";" 
-                                + '"' + propertyValue.Replace('"', ' ').Substring(1, 254) + '"');
+                                + '"' + propertyValue.Replace('"', ' ')
+                                .Replace("\r\n", " ").Replace(";", "_")
+                                .Replace('"', ' ').Replace("\t", "")
+                                .Substring(1, 254) + '"');
                         }
                         else if (!string.IsNullOrEmpty(propertyValue))
                         {
                             trmToDocRefs.Add('"' + entry.content.properties.object_name + '"' 
                                 + ";" + '"' + propertyName + '"' + ";" 
-                                + '"' + propertyValue.Replace('"', ' ') + '"');
+                                + '"' + propertyValue.Replace('"', ' ')
+                                .Replace("\r\n", " ").Replace(";", "_")
+                                .Replace('"', ' ').Replace("\t", "") + '"');
                         }
                         //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, prop.GetValue(properties, null));
                     }
@@ -83,11 +88,11 @@ namespace Emc.Documentum.Rest.Test
                 foreach (String s in trmToDocRefs)
                     tw.WriteLine(s);
             }
-            //using (TextWriter tw2 = new StreamWriter(jsonfileToSaveResults))
-            //{
-            //    foreach (String s in fresult)
-            //        tw2.WriteLine(s);
-            //}
+            using (TextWriter tw2 = new StreamWriter(jsonfileToSaveResults))
+            {
+                foreach (String s in fresult)
+                    tw2.WriteLine(s);
+            }
 
         }
 
