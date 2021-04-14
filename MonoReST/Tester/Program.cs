@@ -35,6 +35,8 @@ namespace Emc.Documentum.Rest.Test
             string defaultPassword = config["defaultPassword"];
             string RestHomeUri = config["defaultRestHomeUri"];
             string repositoryName = config["defaultRepositoryName"];
+            bool generateCSV = Boolean.Parse(config["generateCSV"]);
+            bool generateJSON = Boolean.Parse(config["generateJSON"]);
 
             string fileToSaveResults = System.IO.Path.Combine(saveResultsPath, "export_DocumentsMetadata.csv");
             string jsonfileToSaveResults = System.IO.Path.Combine(saveResultsPath, "_json.txt");
@@ -45,54 +47,59 @@ namespace Emc.Documentum.Rest.Test
             List<string> jsonfileformatresults = new List<string>();
 
             List<string> trmToDocRefs = new List<string>();
-            trmToDocRefs.Add("\"DocNumber\";\"AttributeName\";\"AttributeValue\"");
-            foreach (var item in fresult)
+            if (generateCSV)
             {
-
-                Rootobject dataSet = JsonConvert.DeserializeObject<Rootobject>(item);
-                //Console.OutputEncoding = System.Text.Encoding.UTF8;
-
-                foreach (var entry in dataSet.entries)
+                trmToDocRefs.Add("\"DocNumber\";\"AttributeName\";\"AttributeValue\"");
+                foreach (var item in fresult)
                 {
-                    //Console.OutputEncoding = System.Text.Encoding.UTF8;
+                    Rootobject dataSet = JsonConvert.DeserializeObject<Rootobject>(item);
 
-                    Properties properties = entry.content.properties;
-                    foreach (var prop in properties.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
+                    foreach (var entry in dataSet.entries)
                     {
-                        string propertyName = prop.Name;
-                        string propertyValue = prop.GetValue(properties, null) as string;
+                        //Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-                        if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
+                        Properties properties = entry.content.properties;
+                        foreach (var prop in properties.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
                         {
-                            trmToDocRefs.Add('"' + entry.content.properties.object_name + '"' 
-                                + ";" + '"' + propertyName + '"' + ";" 
-                                + '"' + propertyValue.Replace('"', ' ')
-                                .Replace("\r\n", " ").Replace(";", "_")
-                                .Replace('"', ' ').Replace("\t", "")
-                                .Substring(1, 254) + '"');
+                            string propertyName = prop.Name;
+                            string propertyValue = prop.GetValue(properties, null) as string;
+
+                            if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
+                            {
+                                trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
+                                    + ";" + '"' + propertyName + '"' + ";"
+                                    + '"' + propertyValue.Replace('"', ' ')
+                                    .Replace("\r\n", " ").Replace(";", "_")
+                                    .Replace('"', ' ').Replace("\t", "")
+                                    .Substring(1, 254) + '"');
+                            }
+                            else if (!string.IsNullOrEmpty(propertyValue))
+                            {
+                                trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
+                                    + ";" + '"' + propertyName + '"' + ";"
+                                    + '"' + propertyValue.Replace('"', ' ')
+                                    .Replace("\r\n", " ").Replace(";", "_")
+                                    .Replace('"', ' ').Replace("\t", "") + '"');
+                            }
+                            //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, prop.GetValue(properties, null));
                         }
-                        else if (!string.IsNullOrEmpty(propertyValue))
-                        {
-                            trmToDocRefs.Add('"' + entry.content.properties.object_name + '"' 
-                                + ";" + '"' + propertyName + '"' + ";" 
-                                + '"' + propertyValue.Replace('"', ' ')
-                                .Replace("\r\n", " ").Replace(";", "_")
-                                .Replace('"', ' ').Replace("\t", "") + '"');
-                        }
-                        //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, prop.GetValue(properties, null));
                     }
                 }
+                using (TextWriter tw = new StreamWriter(fileToSaveResults))
+                {
+                    foreach (String s in trmToDocRefs)
+                        tw.WriteLine(s);
+                }
             }
-            using (TextWriter tw = new StreamWriter(fileToSaveResults))
+            if (generateJSON)
             {
-                foreach (String s in trmToDocRefs)
-                    tw.WriteLine(s);
+                using (TextWriter tw2 = new StreamWriter(jsonfileToSaveResults))
+                {
+                    foreach (String s in fresult)
+                        tw2.WriteLine(s);
+                }
             }
-            using (TextWriter tw2 = new StreamWriter(jsonfileToSaveResults))
-            {
-                foreach (String s in fresult)
-                    tw2.WriteLine(s);
-            }
+
 
         }
 
