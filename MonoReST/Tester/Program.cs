@@ -37,6 +37,32 @@ namespace Emc.Documentum.Rest.Test
             string repositoryName = config["defaultRepositoryName"];
             bool generateCSV = Boolean.Parse(config["generateCSV"]);
             bool generateJSON = Boolean.Parse(config["generateJSON"]);
+            bool getDelta = Boolean.Parse(config["getDelta"]);
+            string timeStampdirPath = config["timeStampfilePath"];
+            string date = "";
+
+            if (getDelta)
+            {
+                if (!Directory.Exists(timeStampdirPath))
+                {
+                    Directory.CreateDirectory(timeStampdirPath);
+                }
+
+                //Path.Combine();
+                string timeStampFilePath = Path.Combine(timeStampdirPath, "timestamp.txt");
+                if (File.Exists(timeStampFilePath))
+                {
+                    date = File.ReadAllText(timeStampFilePath);
+                    //and doc.r_modify_date > date ('13.04.2021','dd.mm.yyyy') 
+                }
+                if (string.IsNullOrEmpty(date))
+                {
+                    date = DateTime.Today.Date.ToString("dd.MM.yyyy");
+                }
+
+                dql += "and doc.r_modify_date >= date ('" + date + "','dd.mm.yyyy')";
+                File.WriteAllText(timeStampFilePath, DateTime.Today.Date.ToString("dd.MM.yyyy"), Encoding.UTF8);
+            }
 
             string fileToSaveResults = System.IO.Path.Combine(saveResultsPath, "export_DocumentsMetadata.csv");
             string jsonfileToSaveResults = System.IO.Path.Combine(saveResultsPath, "_json.txt");
@@ -69,8 +95,8 @@ namespace Emc.Documentum.Rest.Test
                                 trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
                                     + ";" + '"' + propertyName + '"' + ";"
                                     + '"' + propertyValue.Replace('"', ' ')
-                                    .Replace("\r\n", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace("\t", "")
+                                    .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
+                                    .Replace('"', ' ').Replace(Environment.NewLine, " ")
                                     .Substring(1, 254) + '"');
                             }
                             else if (!string.IsNullOrEmpty(propertyValue))
@@ -78,8 +104,8 @@ namespace Emc.Documentum.Rest.Test
                                 trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
                                     + ";" + '"' + propertyName + '"' + ";"
                                     + '"' + propertyValue.Replace('"', ' ')
-                                    .Replace("\r\n", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace("\t", "") + '"');
+                                    .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
+                                    .Replace('"', ' ').Replace(Environment.NewLine, " ") + '"');
                             }
                             //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, prop.GetValue(properties, null));
                         }
@@ -87,7 +113,7 @@ namespace Emc.Documentum.Rest.Test
                 }
                 using (TextWriter tw = new StreamWriter(fileToSaveResults))
                 {
-                    foreach (String s in trmToDocRefs)
+                    foreach (String s in trmToDocRefs.Distinct())
                         tw.WriteLine(s);
                 }
             }
