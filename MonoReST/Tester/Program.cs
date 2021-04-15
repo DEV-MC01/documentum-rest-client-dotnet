@@ -85,29 +85,36 @@ namespace Emc.Documentum.Rest.Test
                         //Console.OutputEncoding = System.Text.Encoding.UTF8;
 
                         Properties properties = entry.content.properties;
-                        foreach (var prop in properties.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
+                        if (!string.IsNullOrEmpty(properties.ctrm_number) | !string.IsNullOrEmpty(properties.itrm_number))
                         {
-                            string propertyName = prop.Name;
-                            string propertyValue = prop.GetValue(properties, null) as string;
+                            //Properties properties = JsonConvert.DeserializeObject<Properties>(item);
+                            foreach (var prop in properties.GetType().GetProperties())
+                            {
 
-                            if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
-                            {
-                                trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
-                                    + ";" + '"' + propertyName + '"' + ";"
-                                    + '"' + propertyValue.Replace('"', ' ')
-                                    .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace(Environment.NewLine, " ")
-                                    .Substring(1, 254) + '"');
+
+                                string propertyName = prop.Name;
+                                string propertyValue = (string)prop.GetValue(properties, null);
+                                //Console.WriteLine(properties.object_name);
+                                if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
+                                {
+                                    trmToDocRefs.Add('"' + properties.object_name + '"'
+                                        + ";" + '"' + propertyName + '"' + ";"
+                                        + '"' + propertyValue.Replace('"', ' ')
+                                        .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
+                                        .Replace('"', ' ').Replace(Environment.NewLine, " ")
+                                        .Substring(1, 254) + '"');
+                                }
+                                else if (!string.IsNullOrEmpty(propertyValue))
+                                {
+                                    trmToDocRefs.Add('"' + properties.object_name + '"'
+                                        + ";" + '"' + propertyName + '"' + ";"
+                                        + '"' + propertyValue.Replace('"', ' ')
+                                        .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
+                                        .Replace('"', ' ').Replace(Environment.NewLine, " ") + '"');
+                                }
+                                //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, (string)prop.GetValue(properties, null));
                             }
-                            else if (!string.IsNullOrEmpty(propertyValue))
-                            {
-                                trmToDocRefs.Add('"' + entry.content.properties.object_name + '"'
-                                    + ";" + '"' + propertyName + '"' + ";"
-                                    + '"' + propertyValue.Replace('"', ' ')
-                                    .Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace(Environment.NewLine, " ") + '"');
-                            }
-                            //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, prop.GetValue(properties, null));
+
                         }
                     }
                 }
