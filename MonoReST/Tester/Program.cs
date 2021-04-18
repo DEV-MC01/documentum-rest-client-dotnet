@@ -85,8 +85,8 @@ namespace Emc.Documentum.Rest.Test
                         //Console.OutputEncoding = System.Text.Encoding.UTF8;
 
                         Properties properties = entry.content.properties;
-                        if (!string.IsNullOrEmpty(properties.ctrm_number) | !string.IsNullOrEmpty(properties.itrm_number))
-                        {
+                        //if (!string.IsNullOrEmpty(properties.ctrm_number) | !string.IsNullOrEmpty(properties.itrm_number))
+                        //{
                             //Properties properties = JsonConvert.DeserializeObject<Properties>(item);
                             foreach (var prop in properties.GetType().GetProperties())
                             {
@@ -115,7 +115,7 @@ namespace Emc.Documentum.Rest.Test
                                 //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, (string)prop.GetValue(properties, null));
                             }
 
-                        }
+                        //}
                     }
                 }
                 using (TextWriter tw = new StreamWriter(fileToSaveResults))
