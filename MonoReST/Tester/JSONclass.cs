@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -59,8 +61,14 @@ namespace Emc.Documentum.Rest
         public string ctrm_stage { get; set; }
         public string itrm_number { get; set; }
         public string itrm_stage { get; set; }
+        //public string r_modify_date { get; set; }
         public string ctrm_category { get; set; }
-        public string itrm_category { get; set; }
+        //public string itrm_category { get; set; }
+        //[JsonProperty(ItemConverterType = typeof(JavaScriptDateTimeConverter))]
+        //public DateTime? ctrm_date;
+        //[JsonProperty(ItemConverterType = typeof(JavaScriptDateTimeConverter))]
+        //public DateTime? itrm_date;
+
     }
 
     public class Link

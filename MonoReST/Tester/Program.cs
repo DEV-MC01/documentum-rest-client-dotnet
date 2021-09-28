@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Reflection;
+using Newtonsoft.Json.Converters;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -76,10 +77,37 @@ namespace Emc.Documentum.Rest.Test
             if (generateCSV)
             {
                 trmToDocRefs.Add("\"DocNumber\";\"AttributeName\";\"AttributeValue\"");
+                /*
+                IList<Properties> searchResults = new List<Properties>();
+                foreach (var item in fresult)
+                {
+                    
+                   // Console.WriteLine(item);
+                    //break;
+                    JObject googleSearch = JObject.Parse(item);
+                    Console.WriteLine(googleSearch.Properties());
+                    IList<JToken> results = googleSearch["entries"]["content"]["properties"].Children().ToList();
+
+                    
+                    foreach (JToken result in results)
+                    {
+                        // JToken.ToObject is a helper method that uses JsonSerializer internally
+                        Properties searchResult = result.ToObject<Properties>();
+                        searchResults.Add(searchResult);
+                    }
+                }
+                using (TextWriter tw = new StreamWriter(fileToSaveResults))
+                {
+                    //foreach (String s in searchResults.Distinct())
+                        tw.WriteLine(searchResults);
+                }
+                */
+                // Rootobject dataSet2 = JsonConvert.DeserializeObject<Rootobject>(string.Join("",fresult), new JavaScriptDateTimeConverter());
+                
                 foreach (var item in fresult)
                 {
                     Rootobject dataSet = JsonConvert.DeserializeObject<Rootobject>(item);
-
+    
                     foreach (var entry in dataSet.entries)
                     {
                         //Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -114,15 +142,16 @@ namespace Emc.Documentum.Rest.Test
                                 }
                                 //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, (string)prop.GetValue(properties, null));
                             }
-
                         //}
                     }
                 }
+                
                 using (TextWriter tw = new StreamWriter(fileToSaveResults))
                 {
                     foreach (String s in trmToDocRefs.Distinct())
                         tw.WriteLine(s);
                 }
+                
             }
             if (generateJSON)
             {
