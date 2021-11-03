@@ -214,7 +214,7 @@ namespace Emc.Documentum.Rest.DataModel
 
             if (options == null) options = new FeedGetOptions();
             string dqlUriWithoutTemplateParams = LinkRelations.FindLinkAsString(this.Links, LinkRelations.DQL.Rel);
-      
+
             /******************** BEGIN GET TOTAL IF SPECIFIED *****************************/
             if (options != null && options.IncludeTotal)
             {

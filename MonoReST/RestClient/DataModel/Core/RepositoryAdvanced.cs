@@ -610,8 +610,8 @@ namespace Emc.Documentum.Rest.DataModel
         /// <returns>FileInfo</returns>
         private FileInfo ExportToZip(string query, string folderName, string zipFileName)
         {
-            try
-            {
+            //try
+            //{
                 Feed<PersistentObject> queryResult = ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = 100, IncludeTotal = true });
                 if (queryResult != null && queryResult.Total > 0)
                 {
@@ -675,11 +675,11 @@ namespace Emc.Documentum.Rest.DataModel
                 {
                     throw new Exception("NORESULTSTOZIP: Query returned no results - " + query);
                 }
-            }
-            catch (Exception e)
-            {
-                Client.Logger.WriteToLog(Utility.LogLevel.DEBUG, "ZIPEXPORT", "ZIP EXPORT FAILED: ", e);
-            }
+            //}
+            //catch (Exception e)
+            //{
+            //    Client.Logger.WriteToLog(Utility.LogLevel.DEBUG, "ZIPEXPORT", "ZIP EXPORT FAILED: ", e);
+            //}
             return null;
         }
 
@@ -693,6 +693,7 @@ namespace Emc.Documentum.Rest.DataModel
         {
             objectIDs = "'" + objectIDs.Replace(",", "','") + "'";
             string query = String.Format("select r_object_id,object_name from dm_document where r_object_id IN({0})", objectIDs);
+            Console.WriteLine("Final query: \n" + query);
             return ExportToZip(query, null, zipFileName);
         }
 

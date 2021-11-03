@@ -156,16 +156,16 @@ namespace Emc.Documentum.Rest.Test
                 showdownloadedfiles = Boolean.Parse(testConfig["showdownloadedfiles"].ToString());
 
                 // Setup logger and peroformance output
-                string LogThreshold = testConfig["LogThreshold"].ToString();
-                if (client.Logger != null)
-                {
-                    if (LogThreshold.ToLower().Trim().Equals("debug"))
-                    {
-                        client.Logger.LogLevelThreshold = LogLevel.DEBUG;
-                        client.Logger.TestDirectory = testDirectory;
-                        client.Logger.isPerformance = Boolean.Parse(testConfig["performancedatatoconsole"].ToString());
-                    }
-                }
+                //string LogThreshold = testConfig["LogThreshold"].ToString();
+                //if (client.Logger != null)
+                //{
+                //    if (LogThreshold.ToLower().Trim().Equals("debug"))
+                //    {
+                //        client.Logger.LogLevelThreshold = LogLevel.DEBUG;
+                //        client.Logger.TestDirectory = testDirectory;
+                //        client.Logger.isPerformance = Boolean.Parse(testConfig["performancedatatoconsole"].ToString());
+                //    }
+                //}
 
                 testDirectory = testConfig["exportFilesDirectory"];
                 if (!testDirectory.EndsWith(Path.DirectorySeparatorChar + ""))
@@ -183,39 +183,39 @@ namespace Emc.Documentum.Rest.Test
                     WriteOutput(msg);
                 }
 
-                importFilesDirectory = testConfig["importFilesDirectory"].ToString();
-                importFilesDirectory = getPathRelativeToExecutable(importFilesDirectory);
-                if (!Directory.Exists(importFilesDirectory))
-                {
-                    String msg = "Unable to find the directory specified: '" + importFilesDirectory + "' to pull "
-                        + "random content files from. Unable to proceed. Please set an import files directory manually. Input the directory path below:";
-                    WriteOutput(msg);
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    importFilesDirectory = Console.ReadLine().Trim();
-                    Console.ForegroundColor = ConsoleColor.White;
-                }
-                FileInfo[] filesInfo = new DirectoryInfo(importFilesDirectory).GetFiles();
-                while (filesInfo.Length == 0)
-                {
-                    String msg = "The import directory: '" + importFilesDirectory + "' cannot be empty. Please try to put some files in the directory and " +
-                        "press Enter to continue..";
-                    Console.WriteLine(msg);
-                    Console.ReadLine();
-                    filesInfo = new DirectoryInfo(importFilesDirectory).GetFiles();
-                }
+                //importFilesDirectory = testConfig["importFilesDirectory"].ToString();
+                //importFilesDirectory = getPathRelativeToExecutable(importFilesDirectory);
+                //if (!Directory.Exists(importFilesDirectory))
+                //{
+                //    String msg = "Unable to find the directory specified: '" + importFilesDirectory + "' to pull "
+                //        + "random content files from. Unable to proceed. Please set an import files directory manually. Input the directory path below:";
+                //    WriteOutput(msg);
+                //    Console.ForegroundColor = ConsoleColor.Yellow;
+                //    importFilesDirectory = Console.ReadLine().Trim();
+                //    Console.ForegroundColor = ConsoleColor.White;
+                //}
+                //FileInfo[] filesInfo = new DirectoryInfo(importFilesDirectory).GetFiles();
+                //while (filesInfo.Length == 0)
+                //{
+                //    String msg = "The import directory: '" + importFilesDirectory + "' cannot be empty. Please try to put some files in the directory and " +
+                //        "press Enter to continue..";
+                //    Console.WriteLine(msg);
+                //    Console.ReadLine();
+                //    filesInfo = new DirectoryInfo(importFilesDirectory).GetFiles();
+                //}
 
-                importEmailsDirectory = testConfig["importEmailsDirectory"].ToString();
-                importEmailsDirectory = getPathRelativeToExecutable(importEmailsDirectory);
+                //importEmailsDirectory = testConfig["importEmailsDirectory"].ToString();
+                //importEmailsDirectory = getPathRelativeToExecutable(importEmailsDirectory);
                 renditionsDirectoryName = testDirectory + Path.DirectorySeparatorChar + "Renditions";
                 primaryContentDirectoryName = testDirectory + Path.DirectorySeparatorChar + "PrimaryContent";
-                if (!Directory.Exists(importEmailsDirectory))
-                {
-                    String msg = "Unable to find the directory specified: '" + importEmailsDirectory + "' to pull"
-                        + " random email files from. If customized Rest email processing is installed, the"
-                        + " customized email test will fail. This message can normally be ignored unless you"
-                        + " have the custom Rest email adapter installed.";
-                    WriteOutput(msg);
-                }
+                //if (!Directory.Exists(importEmailsDirectory))
+                //{
+                //    String msg = "Unable to find the directory specified: '" + importEmailsDirectory + "' to pull"
+                //        + " random email files from. If customized Rest email processing is installed, the"
+                //        + " customized email test will fail. This message can normally be ignored unless you"
+                //        + " have the custom Rest email adapter installed.";
+                //    WriteOutput(msg);
+                //}
                 Directory.CreateDirectory(primaryContentDirectoryName);
                 Directory.CreateDirectory(renditionsDirectoryName);
             }
@@ -224,19 +224,19 @@ namespace Emc.Documentum.Rest.Test
                 WriteOutput("*** Form logging cannot be used for multiple threads on Mono, setting to false.");
                 useFormLogging = false;
             }
-            if (useFormLogging)
-            {
-                loggerForm = new Logger();
-                loggerForm.setTitle(parentFolderId);
-                loggerForm.AutoSize = true;
-                loggerForm.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-                int offset = threadNum == 0 ? threadNum : threadNum * 250;
-                loggerForm.Top = threadNum + offset;
-                loggerForm.Left = 0;
-                loggerForm.getLoggerTextBox().Height = 250;
-                loggerForm.getLoggerTextBox().Width = 1024;
-                loggerForm.Show();
-            }      
+            //if (useFormLogging)
+            //{
+            //    loggerForm = new Logger();
+            //    loggerForm.setTitle(parentFolderId);
+            //    loggerForm.AutoSize = true;
+            //    loggerForm.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            //    int offset = threadNum == 0 ? threadNum : threadNum * 250;
+            //    loggerForm.Top = threadNum + offset;
+            //    loggerForm.Left = 0;
+            //    loggerForm.getLoggerTextBox().Height = 250;
+            //    loggerForm.getLoggerTextBox().Width = 1024;
+            //    loggerForm.Show();
+            //}      
         }
 
         private List<DocumentTracker> Tracker { get; set; }
@@ -363,61 +363,62 @@ namespace Emc.Documentum.Rest.Test
             // Set our default folder and document types. 
             CurrentRepository.DocumentType = "dm_document";
             CurrentRepository.FolderType = "dm_folder";
-            NameValueCollection restTests = ConfigurationManager.GetSection("resttests") as NameValueCollection;
-            if (!(Boolean.Parse(restTests["CreateTempDocs"].ToString()) || Boolean.Parse(restTests["CreateTempDocs"].ToString())))
-            {
-                throw new System.Exception("On of the tests that create Documents is required for other tests to run. "
-                    + "You must enable either the CreateTempDocs test and/or the CreateTempDocs test in order to create "
-                    + "documents that can be used in subsequent tests.");
-            }
+            //NameValueCollection restTests = ConfigurationManager.GetSection("resttests") as NameValueCollection;
+            //if (!(Boolean.Parse(restTests["CreateTempDocs"].ToString()) || Boolean.Parse(restTests["CreateTempDocs"].ToString())))
+            //{
+            //    throw new System.Exception("On of the tests that create Documents is required for other tests to run. "
+            //        + "You must enable either the CreateTempDocs test and/or the CreateTempDocs test in order to create "
+            //        + "documents that can be used in subsequent tests.");
+            //}
 
             Tracker = new List<DocumentTracker>();
-            foreach (String key in restTests)
-            {
-                bool preCheckOk = true;
-                // This test is not available in versions earlier than 7.2
-                double restVersion = Double.Parse((productInfo.Properties.Major.Equals("NA") ? "7.2" : productInfo.Properties.Major));
+            ExportFiles();
+            //foreach (String key in restTests)
+            //{
+            //    bool preCheckOk = true;
+            //    // This test is not available in versions earlier than 7.2
+            //    double restVersion = Double.Parse((productInfo.Properties.Major.Equals("NA") ? "7.2" : productInfo.Properties.Major));
 
-                if (key.Equals("Search")) {
-                    if (!(restVersion >= 7.2d))
-                    {
-                        preCheckOk = false;
-                        Console.WriteLine("Documentum Rest Version 7.2 or higher is required to use Search, your version is: " 
-                            + restVersion + " Skipping...");
-                    }
-                }
+            //    if (key.Equals("Search")) {
+            //        if (!(restVersion >= 7.2d))
+            //        {
+            //            preCheckOk = false;
+            //            Console.WriteLine("Documentum Rest Version 7.2 or higher is required to use Search, your version is: " 
+            //                + restVersion + " Skipping...");
+            //        }
+            //    }
 
-                // These features do not work on Mono yet, should be fine when .NetCore is released though
-                if(key.Equals("ExportParent") || key.Equals("ExportListOfFiles"))
-                {
-                    if (Type.GetType("Mono.Runtime") != null)
-                    {
-                        preCheckOk = false;
-                        Console.WriteLine("The zip libraries required for [" + key + " ] have failed under Mono, skipping this  test. If you "
-                            + "want to test for yourself, you will have to modify the source to allow it udner (UseCaseTests");
-                    }
-                }
+            //    // These features do not work on Mono yet, should be fine when .NetCore is released though
+            //    if(key.Equals("ExportParent") || key.Equals("ExportListOfFiles"))
+            //    {
+            //        if (Type.GetType("Mono.Runtime") != null)
+            //        {
+            //            preCheckOk = false;
+            //            Console.WriteLine("The zip libraries required for [" + key + " ] have failed under Mono, skipping this  test. If you "
+            //                + "want to test for yourself, you will have to modify the source to allow it udner (UseCaseTests");
+            //        }
+            //    }
                 
-                if(preCheckOk)
-                {
-                    if (Boolean.Parse(restTests[key].ToString())) runTestByName(key);
-                }
+            //    if(preCheckOk)
+            //    {
+            //        if (Boolean.Parse(restTests[key].ToString())) runTestByName(key);
+            //    }
 
-                if (pauseBetweenOperations)
-                {
-                    Console.WriteLine("Press 'q' to quit, 'g' to run to end, or any other key to run next page..");
-                    ConsoleKeyInfo next = Console.ReadKey();
-                    if (next.KeyChar.Equals('q'))
-                    {
-                        return;
-                    }
-                    if (next.KeyChar.Equals('g'))
-                    {
-                        pauseBetweenOperations = false;
-                    }
-                }
+            //    if (pauseBetweenOperations)
+            //    {
+            //        Console.WriteLine("Press 'q' to quit, 'g' to run to end, or any other key to run next page..");
+            //        ConsoleKeyInfo next = Console.ReadKey();
+            //        if (next.KeyChar.Equals('q'))
+            //        {
+            //            return;
+            //        }
+            //        if (next.KeyChar.Equals('g'))
+            //        {
+            //            pauseBetweenOperations = false;
+            //        }
+            //    }
                 
-            }
+            //}
 
             WriteOutput("#####################################");
             WriteOutput("COMPLETED TESTS IN: " + ((DateTime.Now.Ticks - testStart) / TimeSpan.TicksPerMillisecond) / 1000 / 60 + "minutes");
@@ -433,10 +434,12 @@ namespace Emc.Documentum.Rest.Test
             }
         }
 
-        protected void ExportFiles()
+        public void ExportFiles()
         {
             FeedGetOptions options = new FeedGetOptions { ItemsPerPage = 10 };
-            Feed<Document> feedDocs = CurrentRepository.ExecuteDQL<Document>("select r_object_id from dm_document where folder('" + ProcessBasePath + parentFolderId + "', DESCEND)", options);
+            //new FeedGetOptions { Inline = true, Links = true }
+            Console.WriteLine(options.ToString());
+            Feed<Document> feedDocs = CurrentRepository.ExecuteDQL<Document>("select r_object_id from dm_document where object_name = 'AGCC.323-2138-TXM.DS-0001'", options);
             List<Document> docs = ObjectUtil.getFeedAsList<Document>(feedDocs, true);
             StringBuilder ids = new StringBuilder();
             int pass = 0;
@@ -451,6 +454,7 @@ namespace Emc.Documentum.Rest.Test
                 }
             }
             WriteOutput("[ExportFilesToZip] - Export list of files completed and stored: " + testDirectory + Path.DirectorySeparatorChar + "RandomDocsInParent.zip");
+            Console.WriteLine(ids.ToString());
             CurrentRepository.ExportDocuments(ids.ToString(), testDirectory + Path.DirectorySeparatorChar + "RandomDocsInParent.zip");
         }
 
@@ -631,7 +635,7 @@ namespace Emc.Documentum.Rest.Test
             }     
         }
 
-        public void ViewDocument(String path, DocumentTracker tracker, bool openDocument)
+        protected void ViewDocument(String path, DocumentTracker tracker, bool openDocument)
         {
 
             Document doc = CurrentRepository.GetSysObjectById<Document>(tracker.DocumentId);

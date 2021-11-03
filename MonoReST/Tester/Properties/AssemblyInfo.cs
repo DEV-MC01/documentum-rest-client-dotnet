@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("DctmRestClientCmdTest")]
-[assembly: AssemblyDescription("Documentum REST Sample Client Command-line Test")]
+[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("EMC")]
+[assembly: AssemblyCompany("SIBUR")]
 [assembly: AssemblyProduct("DctmRestClientCmdTest")]
-[assembly: AssemblyCopyright("Copyright © EMC 2016")]
+[assembly: AssemblyCopyright("SIBUR DIGITAL")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
