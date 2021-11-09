@@ -298,7 +298,7 @@ namespace Emc.Documentum.Rest.Test
                 }
                 else
                 {
-                    string timeStamp = " and trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
+                    string timeStamp = " where trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
                     dql += timeStamp;
                 }
             }

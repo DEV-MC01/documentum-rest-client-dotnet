@@ -51,6 +51,7 @@ namespace Emc.Documentum.Rest.DocClass
         public string sib_restriction_modify_date { get; set; }
         public string r_creation_date { get; set; }
         public string r_modify_date { get; set; }
+        public string sib_change_number { get; set; }
     }
 
     public class CP_Document
