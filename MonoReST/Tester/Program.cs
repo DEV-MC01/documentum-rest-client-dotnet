@@ -144,8 +144,8 @@ namespace Emc.Documentum.Rest.Test
                             {
                                 //Console.WriteLine(prop.GetType());
                                 string propertyName = prop.Name;
-                                string objectName = rootObject.properties.object_name;
-                                string r_objectID = rootObject.properties.r_object_id;
+                                //string objectName = rootObject.properties.object_name;
+                                string objectName = rootObject.properties.r_object_id;
 
                                 var propertyValue = prop.GetValue(rootObject.properties).ToString()
                                     .Replace('"', ' ').Replace("\r\n", " ").Replace("\r", " ")
