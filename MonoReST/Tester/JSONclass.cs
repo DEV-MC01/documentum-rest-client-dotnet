@@ -43,6 +43,7 @@ namespace Emc.Documentum.Rest.DocClass
         public  string sib_revision_date { get; set; }
         public string sib_unit_title { get; set; }
         public string sib_vendor { get; set; }
+        public string sib_change_number { get; set; }
     }
 
     public class CP_Document
