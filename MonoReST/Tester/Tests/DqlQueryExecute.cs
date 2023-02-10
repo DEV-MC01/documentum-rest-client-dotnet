@@ -8,7 +8,7 @@ namespace Emc.Documentum.Rest.Test
 {
     public class DqlQueryExecute
     {
-        public static List<string> Run(RestController client, string RestHomeUri, string query, int itemsPerPage, string repositoryName)
+        public static List<string> Run(RestController client, string RestHomeUri, string query, int itemsPerPage, string repositoryName, bool includeTotal = false)
         {
             List<string> results = new List<string>();
             HomeDocument home = client.Get<HomeDocument>(RestHomeUri, null);
@@ -18,15 +18,16 @@ namespace Emc.Documentum.Rest.Test
             //Console.WriteLine(string.Format("Running DQL query '{0}' on repository '{1}', with page size {2}", query, repository.Name, itemsPerPage));
 
             // REST call to get the 1st page of the dql query
-            Feed<PersistentObject> queryResult = repository.ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = itemsPerPage, Raw=true,Recursive=false ,Links=false});
+            Feed<PersistentObject> queryResult = repository.ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = itemsPerPage, Raw = true, Recursive = false, Links = false, IncludeTotal = includeTotal });
 
             if (queryResult != null)
             {
-                var Currentpage = 1;
+                var pageCount = queryResult.PageCount;
+                var currentPage = 1;
                 while (true)
                 {
-                    Console.WriteLine("Page " + Currentpage.ToString());
-                    Currentpage++;
+                    Console.WriteLine("Page {0}{1}", currentPage, includeTotal && pageCount > 0 ? $" of {pageCount}" : string.Empty);
+                    currentPage++;
                     foreach (var obj in queryResult.Entries)
                     {
                         try
@@ -47,7 +48,7 @@ namespace Emc.Documentum.Rest.Test
                     catch (Exception)
                     {
                         
-                        Console.WriteLine("All pages recieved");
+                        Console.WriteLine("All pages received");
                         break;
                     }
 

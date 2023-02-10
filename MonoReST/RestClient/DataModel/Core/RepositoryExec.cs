@@ -218,7 +218,7 @@ namespace Emc.Documentum.Rest.DataModel
             /******************** BEGIN GET TOTAL IF SPECIFIED *****************************/
             if (options != null && options.IncludeTotal)
             {
-                String countDql = "select count(*) as total " + dql.Substring(dql.IndexOf("from"));
+                String countDql = "select count(*) as total " + dql.Substring(dql.IndexOf("from "));
                 List<KeyValuePair<string, object>> cl = options.ToQueryList();
                 cl.Add(new KeyValuePair<string, object>("dql", countDql));
                 Feed<PersistentObject> countFeed = Client.Get<Feed<PersistentObject>>(dqlUriWithoutTemplateParams, cl);

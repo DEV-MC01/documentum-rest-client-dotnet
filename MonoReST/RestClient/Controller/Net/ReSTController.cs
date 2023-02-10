@@ -332,6 +332,7 @@ namespace Emc.Documentum.Rest.Net
             try
             {
                 HttpRequestMessage request = CreateGetRequest(uri);
+                request.Headers.Accept.Clear(); // remove this header to be flexible in accepting content of different types (we trust the CP by default)
                 if (!useAuthentication)
                 {
                     request.Headers.Remove("Authorization");

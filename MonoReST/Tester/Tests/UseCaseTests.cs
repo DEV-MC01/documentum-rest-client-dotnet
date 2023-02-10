@@ -70,7 +70,6 @@ namespace Emc.Documentum.Rest.Test
             this.testStart = DateTime.Now;
             this.testPrefix = testStart.ToString("yyyyMMddhhmmss")+"-"+threadNum;
             this.parentFolderId = "PARENT-" + testPrefix; // new Random().Next(0, 5); ;
-            client.Logger = new LoggerFacade("RestServices", "NA", parentFolderId, parentFolderId);
         }
 
 
@@ -150,10 +149,10 @@ namespace Emc.Documentum.Rest.Test
 			}
             if (testConfig != null)
             {
-                useFormLogging = Boolean.Parse(testConfig["useformlogging"].ToString());
+                //useFormLogging = Boolean.Parse(testConfig["useformlogging"].ToString());
 
-                openEachFile = Boolean.Parse(testConfig["openeachfile"].ToString());
-                showdownloadedfiles = Boolean.Parse(testConfig["showdownloadedfiles"].ToString());
+                //openEachFile = Boolean.Parse(testConfig["openeachfile"].ToString());
+                //showdownloadedfiles = Boolean.Parse(testConfig["showdownloadedfiles"].ToString());
 
                 // Setup logger and peroformance output
                 //string LogThreshold = testConfig["LogThreshold"].ToString();

@@ -50,15 +50,16 @@ namespace Emc.Documentum.Rest.Test
             getDelta = Boolean.Parse(config["getDelta"]);
             timeStampFilePath = config["timeStampfilePath"];
             //saveResultFileName = config["saveResultFileName"];
+            var logLevel = config["logLevel"];
 
-            setupClient(defaultUsername, defaultPassword);
+            SetupClient(defaultUsername, defaultPassword, logLevel);
             ExportDocumentMetadata(doc_dql);
             ExportTRMmetada(trm_dql);
             ExportLINKmetada(link_dql);
             //File export using REST API (doesn't work at the moment)
-            //UseCaseTests useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
+            UseCaseTests useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
 
-            //useCaseTests.Start();
+            useCaseTests.Start();
 
             if (getDelta)
             {
@@ -67,12 +68,15 @@ namespace Emc.Documentum.Rest.Test
             }
         }
         //r_modify_date >= date('01.01.2021 00:00:00', 'dd.MM.yyyy HH:mm:ss')
-        private static void setupClient(string username, string password)
+        private static void SetupClient(string username, string password, string logLevel = null)
         {
             client = new RestController(username, password);
             JsonDotnetJsonSerializer serializer = new JsonDotnetJsonSerializer();
             serializer.PrintStreamBeforeDeserialize = true;
             client.JsonSerializer = serializer;
+
+            if (string.IsNullOrEmpty(logLevel) || !Enum.TryParse(logLevel, true, out Utility.LogLevel parsedLogLevel)) parsedLogLevel = Utility.LogLevel.FATAL;
+            client.Logger = new Utility.LoggerFacade("RestServices", "NA", "NA", username, parsedLogLevel);
         }
         private static void ExportDocumentMetadata(string dql)
         {
@@ -95,7 +99,7 @@ namespace Emc.Documentum.Rest.Test
             }
 
 
-            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
+            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName, true);
             if (fresult.Count < 1)
             {
                 return;
@@ -203,7 +207,7 @@ namespace Emc.Documentum.Rest.Test
             }
 
 
-            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
+            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName, true);
             if (fresult.Count < 1)
             {
                 return;

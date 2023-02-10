@@ -51,7 +51,6 @@ namespace Emc.Documentum.Rest.Utility
         private string _userName;
         public LogLevel LogLevelThreshold {get; set;}
         public string TestDirectory { get; set; }
-        public bool isPerformance { get; set; }
         // Shared private resources.
         // Disposable.
 
@@ -62,7 +61,7 @@ namespace Emc.Documentum.Rest.Utility
         /// <param name="processSubTag"></param>
         /// <param name="folderID"></param>
         /// <param name="userName"></param>
-        public LoggerFacade(string process, string processSubTag, string folderID, string userName)
+        public LoggerFacade(string process, string processSubTag, string folderID, string userName, LogLevel logLevel = LogLevel.ERROR)
         {
             if (string.IsNullOrWhiteSpace(process))
                 throw new ArgumentException("The process parameter cannot be null or whitespace.");
@@ -72,7 +71,7 @@ namespace Emc.Documentum.Rest.Utility
             _folderID = folderID;
             _userName = userName;
 
-            LogLevelThreshold = LogLevel.ERROR;
+            LogLevelThreshold = logLevel;
             _processSubTag = process + ":FACADE";
         }
 
@@ -97,32 +96,29 @@ namespace Emc.Documentum.Rest.Utility
             {
                 if (logLevel >= LogLevelThreshold)
                 {
-                    if (isPerformance)
+                    if (thread.Equals("NORMAL"))
                     {
-                        if (thread.Equals("NORMAL"))
-                        {
-                            Console.ForegroundColor = ConsoleColor.White;
-                            Console.BackgroundColor = ConsoleColor.DarkGreen;
-                        }
-                        if (thread.Equals("SLOW"))
-                        {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.BackgroundColor = ConsoleColor.White;
-                        }
-                    
-                    
-                        Console.WriteLine(
-                        logLevel.ToString() + "|" + thread  + "|" +
-                            //_process+","+
-                            //_processSubTag+","+
-                            //_folderID+","+
-                            //_userName+","+
-                            //thread+","+
-                            //message+","+
-                         verboseMessage + "|" + message);
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.BackgroundColor = ConsoleColor.DarkGreen;
                     }
-                    File.AppendAllText(TestDirectory + Path.DirectorySeparatorChar + "Performance.txt", DateTime.Now + "|" + "TYPE: [" + verboseMessage + "]|" + message +"\n");
+                    if (thread.Equals("SLOW"))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.BackgroundColor = ConsoleColor.White;
                     }
+
+
+                    Console.WriteLine(
+                    logLevel.ToString() + "|" + thread + "|" +
+                     //_process+","+
+                     //_processSubTag+","+
+                     //_folderID+","+
+                     //_userName+","+
+                     //thread+","+
+                     //message+","+
+                     verboseMessage + "|" + message);
+                }
+                File.AppendAllText(Environment.CurrentDirectory + Path.DirectorySeparatorChar + "Log.txt", DateTime.Now + "|" + "TYPE: [" + verboseMessage + "]|" + message + "\n");
             }
             catch (Exception ex)
             {

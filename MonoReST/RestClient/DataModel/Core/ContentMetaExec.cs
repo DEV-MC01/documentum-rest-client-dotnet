@@ -68,7 +68,8 @@ namespace Emc.Documentum.Rest.DataModel
                 }
                 FileStream fs = File.Create(fullPath);
                 media.CopyTo(fs);
-                fs.Dispose();
+                fs.Flush();
+                fs.Close();
             }
 
             return new FileInfo(fullPath);
