@@ -111,11 +111,11 @@ namespace Emc.Documentum.Rest.Test
             {
                 Console.WriteLine(outtext == null? output : outtext);
             }
-            File.AppendAllText(testDirectory + Path.DirectorySeparatorChar + "ProcessDocumentumTest.txt", DateTime.Now + "-" + output + "\n");
+            //File.AppendAllText(testDirectory + Path.DirectorySeparatorChar + "ProcessDocumentumTest.txt", DateTime.Now + "-" + output + "\n");
             if (loggerForm != null) Application.DoEvents();
         }
 
-        public string getPathRelativeToExecutable(string path)
+        public string GetPathRelativeToExecutable(string path)
         {
 			if (!path.Contains(":") && !path.StartsWith(""+Path.DirectorySeparatorChar))
             {
@@ -134,7 +134,7 @@ namespace Emc.Documentum.Rest.Test
 
 
 
-        protected void getPreferences()
+        protected void GetPreferences(string testSubDirectory)
         {
             bool useFormLogging = false;
             NameValueCollection testConfig = null;
@@ -172,7 +172,8 @@ namespace Emc.Documentum.Rest.Test
                     testDirectory = testDirectory + Path.DirectorySeparatorChar + "";
                 }
                 testDirectory = testDirectory + testPrefix;
-                testDirectory = getPathRelativeToExecutable(testDirectory);
+                if (!string.IsNullOrWhiteSpace(testSubDirectory)) testDirectory = testDirectory + Path.DirectorySeparatorChar + testSubDirectory;
+                testDirectory = GetPathRelativeToExecutable(testDirectory);
                 if (!Directory.Exists(testDirectory))
                 {
                     DirectoryInfo dir = Directory.CreateDirectory(testDirectory);
@@ -215,8 +216,8 @@ namespace Emc.Documentum.Rest.Test
                 //        + " have the custom Rest email adapter installed.";
                 //    WriteOutput(msg);
                 //}
-                Directory.CreateDirectory(primaryContentDirectoryName);
-                Directory.CreateDirectory(renditionsDirectoryName);
+                //Directory.CreateDirectory(primaryContentDirectoryName);
+                //Directory.CreateDirectory(renditionsDirectoryName);
             }
             if(Type.GetType("Mono.Runtime") != null && useFormLogging && threadNum > 1)
             {
@@ -310,9 +311,6 @@ namespace Emc.Documentum.Rest.Test
                         // This test does its own timing output
                         SearchForDocuments();
                         break;
-                    case "ExportParent":
-                        ExportParent();
-                        break;
                     case "ExportListOfFiles":
                         ExportFiles();
                         break;
@@ -338,15 +336,12 @@ namespace Emc.Documentum.Rest.Test
             return homeDoc.GetRepository<Repository>(repositoryName);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public void Start()
+        public void Start(string testSubDirectory, params string[] objectIds)
         {
+            Console.WriteLine("Fetching documents from Capital Project...");
 
-            getPreferences();
+            GetPreferences(testSubDirectory);
             long testStart = DateTime.Now.Ticks;
-            long tStart = DateTime.Now.Ticks;
 
             HomeDocument home = client.Get<HomeDocument>(RestHomeUri, null);
             if (home == null)
@@ -371,7 +366,13 @@ namespace Emc.Documentum.Rest.Test
             //}
 
             Tracker = new List<DocumentTracker>();
-            ExportFiles();
+            const int chunkSize = 90;
+            for (int i = 0; i < objectIds.Length; i += chunkSize)
+            {
+                var chunk = objectIds.Skip(i).Take(chunkSize); // use a chunk to avoid a potential UriTooLong exception as objectIds will be a part of the query string
+                CurrentRepository.ExportDocuments(string.Join(",", chunk), testDirectory + Path.DirectorySeparatorChar);
+            }
+
             //foreach (String key in restTests)
             //{
             //    bool preCheckOk = true;
@@ -419,10 +420,10 @@ namespace Emc.Documentum.Rest.Test
                 
             //}
 
-            WriteOutput("#####################################");
-            WriteOutput("COMPLETED TESTS IN: " + ((DateTime.Now.Ticks - testStart) / TimeSpan.TicksPerMillisecond) / 1000 / 60 + "minutes");
-            WriteOutput("#####################################");
-            System.Diagnostics.Process.Start(testDirectory);
+            //WriteOutput("#####################################");
+            //WriteOutput("COMPLETED IN: " + ((DateTime.Now.Ticks - testStart) / TimeSpan.TicksPerMillisecond) / 1000 / 60 + "minutes");
+            //WriteOutput("#####################################");
+            //System.Diagnostics.Process.Start(testDirectory);
 
             if (loggerForm != null)
             {
@@ -452,16 +453,9 @@ namespace Emc.Documentum.Rest.Test
                     ids.Append(",").Append(id);
                 }
             }
-            WriteOutput("[ExportFilesToZip] - Export list of files completed and stored: " + testDirectory + Path.DirectorySeparatorChar + "RandomDocsInParent.zip");
+            WriteOutput("[ExportFilesToFolder] - Export list of files completed and stored: " + testDirectory + Path.DirectorySeparatorChar);
             Console.WriteLine(ids.ToString());
-            CurrentRepository.ExportDocuments(ids.ToString(), testDirectory + Path.DirectorySeparatorChar + "RandomDocsInParent.zip");
-        }
-
-        protected void ExportParent()
-        {
-            string parentPath = ProcessBasePath + parentFolderId;
-			FileInfo zipFile = CurrentRepository.ExportFolder(parentPath, testDirectory + Path.DirectorySeparatorChar + parentFolderId + ".zip");
-			WriteOutput("[ExportFolderToZip] Export Folder completed and stored: " + testDirectory + Path.DirectorySeparatorChar + parentFolderId + ".zip");
+            CurrentRepository.ExportDocuments(ids.ToString(), testDirectory + Path.DirectorySeparatorChar);
         }
 
         protected void CreateFromTemplate()

@@ -123,9 +123,6 @@ namespace Emc.Documentum.Rest.Test
                         // This test does its own timing output
                         SearchForDocuments();
                         break;
-                    case "ExportParent":
-                        ExportParent();
-                        break;
                     case "ExportListOfFiles":
                         ExportFiles();
                         break;
@@ -143,13 +140,9 @@ namespace Emc.Documentum.Rest.Test
             return success;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        new public void Start()
+        public void Start(string subArea)
         {
-
-            getPreferences();
+            GetPreferences(subArea);
             long testStart = DateTime.Now.Ticks;
             long tStart = DateTime.Now.Ticks;
 

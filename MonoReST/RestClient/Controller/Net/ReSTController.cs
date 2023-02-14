@@ -141,6 +141,7 @@ namespace Emc.Documentum.Rest.Net
             HttpClientHandler httpClientHandler = new HttpClientHandler();
             httpClientHandler.UseDefaultCredentials = true; // Kerberos with fallback to NTLM?
             _httpClient = new HttpClient(httpClientHandler);
+            _userName = Environment.UserName;
             JSON_GENERIC_MEDIA_TYPE = new MediaTypeWithQualityHeaderValue("application/*+json");
             JSON_VND_MEDIA_TYPE = new MediaTypeWithQualityHeaderValue("application/vnd.emc.documentum+json");
             _httpClient.Timeout = new TimeSpan(0, timeOutMinutes, 0);
@@ -310,10 +311,10 @@ namespace Emc.Documentum.Rest.Net
             }
             catch (Exception e)
             {
-                WriteToLog(LogLevel.ERROR, this.GetType().Name, "Error URI: " + uri, e);
-                if(e.InnerException is TaskCanceledException)
+                WriteToLog(!string.IsNullOrEmpty(uri) ? LogLevel.ERROR : LogLevel.DEBUG, this.GetType().Name, !string.IsNullOrEmpty(uri) ? "Error URI: " + uri : "URI is empty", e);
+                if (e.InnerException is TaskCanceledException)
                 {
-                    throw new Exception("A timeout occurred waiting on a response from request: " + uri,e.InnerException);
+                    throw new Exception("A timeout occurred waiting on a response from request: " + uri, e.InnerException);
                 }
             }
             if (obj is Executable) (obj as Executable).SetClient(this);

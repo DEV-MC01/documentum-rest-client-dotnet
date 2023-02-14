@@ -575,14 +575,12 @@ namespace Emc.Documentum.Rest.DataModel
             return folder;
         }
 
-       /// <summary>
-         /// Exports a Folder and all associated files under that folder structure as a zip
+        /// <summary>
+        /// Exports a Folder and all associated files under that folder structure to a target folder
         /// objectId is the folder's r_object_id
-       /// </summary>
-       /// <param name="folderPath"></param>
-       /// <param name="zipFileName"></param>
-       /// <returns>FileInfo</returns>
-        public FileInfo ExportFolder(string folderPath, string zipFileName)
+        /// </summary>
+        /// <param name="folderPath"></param>
+        public void ExportFolder(string folderPath)
         {
             //Get the name of the zip file you are creating.
             string folderName = folderPath.Substring(folderPath.LastIndexOf("/") + 1);
@@ -596,105 +594,83 @@ namespace Emc.Documentum.Rest.DataModel
              " and fol.r_object_id = sr.i_folder_id and fol.i_position = -1 and doc.r_object_id = s.r_object_id" +
              " and FOLDER('" + folderPath + "', DESCEND) order by fol.r_folder_path,s.object_name";
              */
-            return ExportToZip(query, folderName, zipFileName);
-
-
+            ExportToFolder(query, folderName);
         }
 
         /// <summary>
-        /// Exports a file(s) to a zip file based on a qualifying DQL statement
+        /// Exports a file(s) to a target folder based on a qualifying DQL statement
         /// </summary>
         /// <param name="query"></param>
         /// <param name="folderName"></param>
-        /// <param name="zipFileName"></param>
-        /// <returns>FileInfo</returns>
-        private FileInfo ExportToZip(string query, string folderName, string zipFileName)
+        private void ExportToFolder(string query, string folderName)
         {
-            //try
-            //{
-                Feed<PersistentObject> queryResult = ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = 100, IncludeTotal = true });
-                if (queryResult != null && queryResult.Total > 0)
+            Feed<PersistentObject> queryResult = ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = 100, IncludeTotal = true });
+            if (queryResult != null && queryResult.Total > 0)
+            {
+                Console.WriteLine("{0} file(s) have been found.", queryResult.Total);
+
+                int totalResults = queryResult.Total;
+                double totalPages = queryResult.PageCount;
+                int docProcessed = 0;
+                Dictionary<string, int> kp = new Dictionary<string, int>();
+
+                for (int i = 0; i < totalPages; i++)
                 {
-                    int totalResults = queryResult.Total;
-                    double totalPages = queryResult.PageCount;
-                    int docProcessed = 0;
-                    Dictionary<string, int> kp = new Dictionary<string, int>();
-                    
-                    for (int i = 0; i < totalPages; i++)
+                    List<PersistentObject> objs = ObjectUtil.getFeedAsList(queryResult, false);
+                    foreach (PersistentObject obj in objs)
                     {
-                        List<PersistentObject> objs = ObjectUtil.getFeedAsList(queryResult, false);
-                        foreach (PersistentObject obj in objs)
+                        SingleGetOptions options = new SingleGetOptions();
+                        options.SetQuery("media-url-policy", "local");
+                        Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
+                        ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
+                        FileInfo downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
+                        // string path = "c:/temp/case" + obj.getAttributeValue("r_folder_path").ToString();
+                        string filename = downloadedContentFile.Name;
+
+                        // If a file that is the same name is exported, give it a unique name
+                        if (kp.Keys.Contains(filename))
                         {
-                            SingleGetOptions options = new SingleGetOptions();
-                            options.SetQuery("media-url-policy", "local");
-                            Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
-                            ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
-                            FileInfo downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
-                            // string path = "c:/temp/case" + obj.getAttributeValue("r_folder_path").ToString();
-                            string filename = downloadedContentFile.Name;
-
-                            // If a file that is the same name is exported, give it a unique name
-                            if (kp.Keys.Contains(filename))
-                            {
-                                int len = filename.LastIndexOf(".");
-                                if (len < 0) len = filename.Length;
-                                kp[filename] += 1;
-                                string insertinto = "_" + kp[filename].ToString();
-                                filename = filename.Insert(len, insertinto);
-                                kp.Add(filename, 0);
-                            }
-                            else { kp.Add(filename, 0); }
-
-
-                            string zipPath = "";
-                            if (folderName == null)
-                            {
-								zipPath = Path.AltDirectorySeparatorChar + filename;
-                                //zipPath = zipPath.Replace(@"/", @"\");
-                            }
-                            else
-                            {
-                                zipPath = obj.GetPropertyValue("r_folder_path").ToString();
-                                zipPath = zipPath.Substring(zipPath.IndexOf(folderName));
-                                if (zipPath.Length == 0)
-                                { zipPath = zipPath + filename; }
-                                else
-								{ zipPath = zipPath + Path.AltDirectorySeparatorChar + filename; }
-                                //zipPath = zipPath.Replace(@"/", @"\");
-                                //pathinzip = pathinzip.Substring(pathinzip.IndexOf(@"\") + 1);
-                            }
-                            AddFileToZipArchive(downloadedContentFile, zipPath, new FileInfo(zipFileName));
-                            docProcessed++;
+                            int len = filename.LastIndexOf(".");
+                            if (len < 0) len = filename.Length;
+                            kp[filename] += 1;
+                            string insertinto = "_" + kp[filename].ToString();
+                            filename = filename.Insert(len, insertinto);
+                            kp.Add(filename, 0);
                         }
+                        else { kp.Add(filename, 0); }
 
-                        if (totalResults != docProcessed) queryResult = queryResult.NextPage();
+
+                        string targetPath = folderName == null ? Path.AltDirectorySeparatorChar + filename : folderName + Path.AltDirectorySeparatorChar + filename;
+                        File.Move(downloadedContentFile.FullName, targetPath);
+                        docProcessed++;
+
+                        Console.WriteLine("File '{0}' has been downloaded.", downloadedContentFile.Name);
                     }
 
-                } // End if query result null
-                else
-                {
-                    throw new Exception("NORESULTSTOZIP: Query returned no results - " + query);
+                    if (totalResults != docProcessed) queryResult = queryResult.NextPage();
                 }
-            //}
-            //catch (Exception e)
-            //{
-            //    Client.Logger.WriteToLog(Utility.LogLevel.DEBUG, "ZIPEXPORT", "ZIP EXPORT FAILED: ", e);
-            //}
-            return null;
+
+            } // End if query result null
+            else
+            {
+                Console.WriteLine("NORESULTSTOFOLDER: Query returned no results - " + query);
+            }
         }
 
         /// <summary>
-        /// Gets a list of documents by object IDs; Zips them and returns Zip file location
+        /// Gets a list of documents by object IDs and downloads the documents to the target folder.
         /// </summary>
         /// <param name="objectIDs"></param>
-        /// <param name="zipFileName"></param>
-        /// <returns>FileInfo</returns>
-        public FileInfo ExportDocuments(string objectIDs, string zipFileName)
+        /// <param name="targetFolder"></param>
+        public void ExportDocuments(string objectIDs, string targetFolder)
         {
+            if (string.IsNullOrEmpty(objectIDs)) Console.WriteLine("No documents to be downloaded have been found.");
+
             objectIDs = "'" + objectIDs.Replace(",", "','") + "'";
             string query = String.Format("select r_object_id,object_name from dm_document where r_object_id IN({0})", objectIDs);
+            Console.WriteLine("Export documents to the folder " + targetFolder);
             Console.WriteLine("Final query: \n" + query);
-            return ExportToZip(query, null, zipFileName);
+            ExportToFolder(query, targetFolder);
         }
 
         /// <summary>

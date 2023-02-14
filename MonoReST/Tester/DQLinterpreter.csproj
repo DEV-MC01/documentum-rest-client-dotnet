@@ -135,6 +135,7 @@
     <Compile Include="Tests\UseCaseTestsD2.cs" />
     <Compile Include="Tests\UseCaseTests.cs" />
     <Compile Include="Tests\UserTest.cs" />
+    <Compile Include="Utl.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

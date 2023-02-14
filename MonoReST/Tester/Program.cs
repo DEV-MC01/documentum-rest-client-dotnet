@@ -17,17 +17,15 @@ namespace Emc.Documentum.Rest.Test
     class Program
     {
         private static RestController client;
+        private static bool getFiles;
         private static bool getDelta;
         private static bool generateCSV;
         private static bool generateJSON;
-        private static string fileToSaveResults;
-        private static string jsonfileToSaveResults;
         private static string saveResultsPath;
         private static string timeStampFilePath;
         private static string RestHomeUri;
         private static int itemsPerPage;
         private static string repositoryName;
-        //private static string saveResultFileName;
 
         [STAThread]
         static void Main(string[] args)
@@ -35,31 +33,32 @@ namespace Emc.Documentum.Rest.Test
             NameValueCollection config = ConfigurationManager.GetSection("restconfig") as NameValueCollection;
 
             itemsPerPage = int.Parse(config["itemsPerPage"]);
-            string doc_dql = config["DQL"];
-            string trm_dql = config["TRM_DQL"];
-            string link_dql = config["Link_DQL"];
-
-
             saveResultsPath = config["exportFilesDirectory"];
-            string defaultUsername = config["defaultUsername"];
-            string defaultPassword = config["defaultPassword"];
+            var windowsAuthentication = Boolean.Parse(config["windowsAuthentication"]);
+            var defaultUsername = config["defaultUsername"];
+            var defaultPassword = config["defaultPassword"];
+            var decryptedPassword = Utl.Crypt.DecryptString(defaultPassword);
             RestHomeUri = config["defaultRestHomeUri"];
             repositoryName = config["defaultRepositoryName"];
             generateCSV = Boolean.Parse(config["generateCSV"]);
             generateJSON = Boolean.Parse(config["generateJSON"]);
+            getFiles = Boolean.Parse(config["getFiles"]);
             getDelta = Boolean.Parse(config["getDelta"]);
             timeStampFilePath = config["timeStampfilePath"];
-            //saveResultFileName = config["saveResultFileName"];
             var logLevel = config["logLevel"];
+            var dqlSections = config.AllKeys.Where(k => k.StartsWith("dql_"));
 
-            SetupClient(defaultUsername, defaultPassword, logLevel);
-            ExportDocumentMetadata(doc_dql);
-            ExportTRMmetada(trm_dql);
-            ExportLINKmetada(link_dql);
-            //File export using REST API (doesn't work at the moment)
-            UseCaseTests useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
-
-            useCaseTests.Start();
+            RemoveOldResultFiles();
+            SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, logLevel);
+            var useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
+            foreach (var dqlSection in dqlSections)
+            {
+                Console.WriteLine("Section '{0}' is being processed...", dqlSection);
+                var documentArea = dqlSection.Replace("dql_", "");
+                var objectIds = ExportDocumentMetadata(config[dqlSection], documentArea + "_");
+                if (getFiles) useCaseTests.Start(documentArea, objectIds);
+                Console.WriteLine("Section '{0}' has been processed.", dqlSection);
+            }
 
             if (getDelta)
             {
@@ -68,9 +67,9 @@ namespace Emc.Documentum.Rest.Test
             }
         }
         //r_modify_date >= date('01.01.2021 00:00:00', 'dd.MM.yyyy HH:mm:ss')
-        private static void SetupClient(string username, string password, string logLevel = null)
+        private static void SetupClient(bool windowsAuth, string username, string password, string logLevel = null)
         {
-            client = new RestController(username, password);
+            client = windowsAuth ? new RestController(5) : new RestController(username, password);
             JsonDotnetJsonSerializer serializer = new JsonDotnetJsonSerializer();
             serializer.PrintStreamBeforeDeserialize = true;
             client.JsonSerializer = serializer;
@@ -78,12 +77,14 @@ namespace Emc.Documentum.Rest.Test
             if (string.IsNullOrEmpty(logLevel) || !Enum.TryParse(logLevel, true, out Utility.LogLevel parsedLogLevel)) parsedLogLevel = Utility.LogLevel.FATAL;
             client.Logger = new Utility.LoggerFacade("RestServices", "NA", "NA", username, parsedLogLevel);
         }
-        private static void ExportDocumentMetadata(string dql)
+
+        private static string[] ExportDocumentMetadata(string dql, string fileNamePrefix)
         {
-            Console.WriteLine("Fetching documents metadata from Capital project...");
+            var objectIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Console.WriteLine("Fetching documents metadata from Capital Project...");
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            string fileNamePrefix = "doc_";
+            fileNamePrefix = !string.IsNullOrWhiteSpace(fileNamePrefix) ? fileNamePrefix : "doc_";
 
             if (getDelta)
             {
@@ -98,196 +99,92 @@ namespace Emc.Documentum.Rest.Test
                 }
             }
 
-
             List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName, true);
             if (fresult.Count < 1)
-            {
-                return;
-            }
+                return objectIds.ToArray();
+
             //List<string> jsonfileformatresults = new List<string>();
             stopwatch.Stop();
             Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
             Console.WriteLine("Parsing query results...");
+
             List<string> cvsFileContent = new List<string>();
-            if (generateCSV)
+            cvsFileContent.Add("\"DocId\";\"AttributeName\";\"AttributeValue\"");
+
+            // Rootobject dataSet2 = JsonConvert.DeserializeObject<Rootobject>(string.Join("",fresult), new JavaScriptDateTimeConverter());
+            Console.OutputEncoding = Encoding.UTF8;
+
+            foreach (var item in fresult)
             {
-                cvsFileContent.Add("\"DocNumber\";\"AttributeName\";\"AttributeValue\"");
-
-                // Rootobject dataSet2 = JsonConvert.DeserializeObject<Rootobject>(string.Join("",fresult), new JavaScriptDateTimeConverter());
-                Console.OutputEncoding = Encoding.UTF8;
-
-                foreach (var item in fresult)
+                DocClass.CP_Document rootObject = new DocClass.CP_Document();
+                string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
+                try
                 {
-                    DocClass.CP_Document rootObject = new DocClass.CP_Document();
-                    string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
-                    try
+                    var options = new JsonSerializerOptions
                     {
-                        var options = new JsonSerializerOptions
+                        WriteIndented = true,
+                        AllowTrailingCommas = true,
+                        PropertyNameCaseInsensitive = true
+
+                    };
+                    rootObject = System.Text.Json.JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Deserialization ERROR: \r" + fixedDate + "\r with error: \r " + e.Message);
+                }
+
+                //Console.WriteLine(rootObject.properties.r_object_id);
+                try
+                {
+                    foreach (PropertyInfo prop in rootObject.properties.GetType().GetProperties())
+                    {
+                        //Console.WriteLine(prop.Name);
+                        if (prop.GetValue(rootObject.properties) != null)
                         {
-                            WriteIndented = true,
-                            AllowTrailingCommas = true,
-                            PropertyNameCaseInsensitive = true
+                            //Console.WriteLine(prop.GetType());
+                            string propertyName = prop.Name;
+                            //string objectName = rootObject.properties.object_name;
+                            string objectName = rootObject.properties.r_object_id;
+                            if (!string.IsNullOrWhiteSpace(objectName)) objectIds.Add(objectName);
 
-                        };
-                        rootObject = System.Text.Json.JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("deserializing ERROR: \r" + fixedDate + "\r with error: \r " + e.Message);
-
-                    }
-
-                    //Console.WriteLine(rootObject.properties.r_object_id);
-                    try
-                    {
-                        foreach (PropertyInfo prop in rootObject.properties.GetType().GetProperties())
-                        {
-
-                            //Console.WriteLine(prop.Name);
-                            if (prop.GetValue(rootObject.properties) != null)
+                            var propertyValue = prop.GetValue(rootObject.properties).ToString()
+                                .Replace('"', ' ').Replace("\r\n", " ").Replace("\r", " ")
+                                .Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
+                                .Replace('"', ' ').Replace(Environment.NewLine, " ").Replace("\\", " ").Trim();
+                            if (propertyName.Contains("date"))
                             {
-                                //Console.WriteLine(prop.GetType());
-                                string propertyName = prop.Name;
-                                //string objectName = rootObject.properties.object_name;
-                                string objectName = rootObject.properties.r_object_id;
-
-                                var propertyValue = prop.GetValue(rootObject.properties).ToString()
-                                    .Replace('"', ' ').Replace("\r\n", " ").Replace("\r", " ")
-                                    .Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace(Environment.NewLine, " ").Replace("\\", " ").Trim();
-                                if (propertyName.Contains("date"))
-                                {
-                                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                                    propertyValue = dateTime.AddMilliseconds(long.Parse(propertyValue)).ToString("yyyy-MM-dd hh:mm:ss");
-
-                                }
-                                //Due to limit value length in GK, we need to cut long descriptions
-                                if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
-                                {
-                                    cvsFileContent.Add("\"" + objectName + "\";\"" + propertyName + "\";\"" + propertyValue.Substring(0, 250) + "..." + "\"");
-                                }
-                                else if (!string.IsNullOrEmpty(propertyValue))
-                                {
-                                    cvsFileContent.Add("\"" + objectName + "\";\"" + propertyName + "\";\"" + propertyValue + "\"");
-                                }
+                                DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+                                propertyValue = dateTime.AddMilliseconds(long.Parse(propertyValue)).ToString("yyyy-MM-dd hh:mm:ss");
 
                             }
-                            //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, propertyValue);
-                        }
-                    }
-                    catch (Exception)
-                    {
 
-                        Console.WriteLine("Error occured while parsing results");
-                    }
-
-                }
-
-
-            }
-            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
-        }
-        private static void ExportTRMmetada(string dql)
-        {
-            Console.WriteLine("Getting data from Capital project for TRM...");
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            string fileNamePrefix = "trm_";
-            if (getDelta)
-            {
-                if (!File.Exists(timeStampFilePath))
-                {
-                    File.Create(timeStampFilePath);
-                }
-                else
-                {
-                    string timeStamp = " and r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
-                    dql += timeStamp;
-                }
-            }
-
-
-            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName, true);
-            if (fresult.Count < 1)
-            {
-                return;
-            }
-            //List<string> jsonfileformatresults = new List<string>();
-            stopwatch.Stop();
-            Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
-            Console.WriteLine("Parsing query results...");
-            List<string> cvsFileContent = new List<string>();
-            if (generateCSV)
-            {
-                cvsFileContent.Add("\"TRM_id\";\"AttributeName\";\"AttributeValue\"");
-
-                foreach (var item in fresult)
-                {
-                    TRM_Class.TrmClass rootObject = new TRM_Class.TrmClass();
-                    string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
-                    try
-                    {
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            AllowTrailingCommas = true,
-                            PropertyNameCaseInsensitive = true
-
-                        };
-                        rootObject = System.Text.Json.JsonSerializer.Deserialize<TRM_Class.TrmClass>(fixedDate, options);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Deserializing ERROR: \r" + fixedDate + "\r with error: \r " + e.Message);
-
-                    }
-
-                    try
-                    {
-                        foreach (PropertyInfo prop in rootObject.properties.GetType().GetProperties())
-                        {
-                            if (prop.GetValue(rootObject.properties) != null)
+                            //Due to limit value length in GK, we need to cut long descriptions
+                            if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
                             {
-                                //Console.WriteLine(prop.GetType());
-                                string propertyName = prop.Name;
-                                string r_objectID = rootObject.properties.r_object_id;
-
-                                var propertyValue = prop.GetValue(rootObject.properties).ToString()
-                                    .Replace('"', ' ').Replace("\r\n", " ").Replace("\r", " ")
-                                    .Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
-                                    .Replace('"', ' ').Replace(Environment.NewLine, " ").Replace("\\", " ").Trim();
-                                if (propertyName.Contains("date"))
-                                {
-                                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                                    propertyValue = dateTime.AddMilliseconds(long.Parse(propertyValue)).ToString("yyyy-MM-dd hh:mm:ss");
-
-                                }
-                                //Due to limit value length in GK, we need to cut long descriptions
-                                if (!string.IsNullOrEmpty(propertyValue) && propertyValue.Length > 254)
-                                {
-                                    cvsFileContent.Add("\"" + r_objectID + "\";\"" + propertyName + "\";\"" + propertyValue.Substring(0, 250) + "..." + "\"");
-                                }
-                                else if (!string.IsNullOrEmpty(propertyValue))
-                                {
-                                    cvsFileContent.Add("\"" + r_objectID + "\";\"" + propertyName + "\";\"" + propertyValue + "\"");
-                                }
-
+                                cvsFileContent.Add("\"" + objectName + "\";\"" + propertyName + "\";\"" + propertyValue.Substring(0, 250) + "..." + "\"");
                             }
-                        }
-                    }
-                    catch (Exception)
-                    {
+                            else if (!string.IsNullOrEmpty(propertyValue))
+                            {
+                                cvsFileContent.Add("\"" + objectName + "\";\"" + propertyName + "\";\"" + propertyValue + "\"");
+                            }
 
-                        Console.WriteLine("Error occured while parsing results");
+                        }
+                        //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, propertyValue);
                     }
                 }
-
+                catch (Exception)
+                {
+                    Console.WriteLine("Error occurred while parsing results");
+                }
 
             }
-            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
-            
 
+            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
+
+            return objectIds.ToArray();
         }
+
         private static void ExportLINKmetada(string dql)
         {
             Console.WriteLine("Getting link data from Capital project...");
@@ -341,25 +238,22 @@ namespace Emc.Documentum.Rest.Test
 
                     try
                     {
-                        cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id +"\"");
+                        cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id + "\"");
                     }
                     catch (Exception)
                     {
                         Console.WriteLine("Error occured while parsing results");
                     }
                 }
-
-
             }
-            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
-            
 
-        }
-        public static void SaveResultToFile(List<string> csvContent, List<string> jsonContent, string _fileNamePrefix)
+            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
+		}
+
+        public static void SaveResultToFile(List<string> csvContent, List<string> jsonContent, string fileNamePrefix)
         {
-            string csvFileName = _fileNamePrefix + "exportData.csv";
-            fileToSaveResults = System.IO.Path.Combine(saveResultsPath, csvFileName);
-            jsonfileToSaveResults = System.IO.Path.Combine(saveResultsPath, _fileNamePrefix + "_json.txt");
+            var fileToSaveResults = Path.Combine(saveResultsPath, fileNamePrefix + "exportData.csv");
+            var jsonfileToSaveResults = Path.Combine(saveResultsPath, fileNamePrefix + "exportData.json");
 
             if (generateCSV)
             {
@@ -383,7 +277,12 @@ namespace Emc.Documentum.Rest.Test
             }
         }
 
+        public static void RemoveOldResultFiles()
+        {
+            var exportDataFiles = Directory.GetFiles(saveResultsPath ?? ".\\", "*exportData.*", SearchOption.TopDirectoryOnly);
+            foreach (var exportDataFile in exportDataFiles)
+                File.Delete(exportDataFile);
+        }
     }
-
 }
 

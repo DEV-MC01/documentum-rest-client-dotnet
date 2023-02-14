@@ -31,7 +31,6 @@ namespace Emc.Documentum.Rest.DataModel
         /// <returns>Returns System FileInfo</returns>
         public FileInfo DownloadContentMediaFile()
         {
-            
             string contentMediaUri = LinkRelations.FindLinkAsString(this.Links, LinkRelations.CONTENT_MEDIA.Rel);
             string fileName = (string)GetPropertyValue("object_name"); 
             string dosExtension = (string)GetPropertyValue("dos_extension");
@@ -58,7 +57,7 @@ namespace Emc.Documentum.Rest.DataModel
             fileName = ObjectUtil.getSafeFileName(fileName);
             // Ensure file extension is not already there
 
-            string fullPath = Path.Combine(Path.GetTempPath(), fileName + ( (fileExtension == null || fileExtension.Equals("")) ? "" : "." + fileExtension) );
+            string fullPath = Path.Combine(Path.GetTempPath(), fileName + ((fileExtension == null || fileExtension.Equals("")) ? "" : "." + fileExtension));
 
             using (Stream media = DownloadContentMediaStream())
             {

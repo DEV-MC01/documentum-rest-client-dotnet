@@ -118,7 +118,7 @@ namespace Emc.Documentum.Rest.Utility
                      //message+","+
                      verboseMessage + "|" + message);
                 }
-                File.AppendAllText(Environment.CurrentDirectory + Path.DirectorySeparatorChar + "Log.txt", DateTime.Now + "|" + "TYPE: [" + verboseMessage + "]|" + message + "\n");
+                //File.AppendAllText(Environment.CurrentDirectory + Path.DirectorySeparatorChar + "Log.txt", DateTime.Now + "|" + "TYPE: [" + verboseMessage + "]|" + message + "\n");
             }
             catch (Exception ex)
             {

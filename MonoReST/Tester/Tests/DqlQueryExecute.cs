@@ -24,7 +24,7 @@ namespace Emc.Documentum.Rest.Test
             {
                 var pageCount = queryResult.PageCount;
                 var currentPage = 1;
-                while (true)
+                while (queryResult != null)
                 {
                     Console.WriteLine("Page {0}{1}", currentPage, includeTotal && pageCount > 0 ? $" of {pageCount}" : string.Empty);
                     currentPage++;
@@ -36,7 +36,6 @@ namespace Emc.Documentum.Rest.Test
                         }
                         catch (Exception)
                         {
-
                             Console.WriteLine("Error in results add");
                         }
                         //docProcessed++;
@@ -47,7 +46,6 @@ namespace Emc.Documentum.Rest.Test
                     }
                     catch (Exception)
                     {
-                        
                         Console.WriteLine("All pages received");
                         break;
                     }
