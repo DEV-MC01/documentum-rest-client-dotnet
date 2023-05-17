@@ -623,6 +623,12 @@ namespace Emc.Documentum.Rest.DataModel
                         options.SetQuery("media-url-policy", "local");
                         Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
                         ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
+                        if (primaryContentMeta == null)
+                        {
+                            Console.WriteLine($"No primary content has been found for the document '{obj.GetPropertyValue("object_name")}'.");
+                            docProcessed++;
+                            continue;
+                        }
                         FileInfo downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
                         // string path = "c:/temp/case" + obj.getAttributeValue("r_folder_path").ToString();
                         string filename = downloadedContentFile.Name;

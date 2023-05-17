@@ -6,11 +6,10 @@ using System.Configuration;
 using Emc.Documentum.Rest.Net;
 using System.IO;
 using System.Collections.Specialized;
-using Newtonsoft.Json;
 using System.Reflection;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Net;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -38,6 +37,7 @@ namespace Emc.Documentum.Rest.Test
             var defaultUsername = config["defaultUsername"];
             var defaultPassword = config["defaultPassword"];
             var decryptedPassword = Utl.Crypt.DecryptString(defaultPassword);
+            var ignoreInvalidSslCertificate = Boolean.Parse(config["ignoreInvalidSslCertificate"]);
             RestHomeUri = config["defaultRestHomeUri"];
             repositoryName = config["defaultRepositoryName"];
             generateCSV = Boolean.Parse(config["generateCSV"]);
@@ -49,7 +49,7 @@ namespace Emc.Documentum.Rest.Test
             var dqlSections = config.AllKeys.Where(k => k.StartsWith("dql_"));
 
             RemoveOldResultFiles();
-            SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, logLevel);
+            SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
             var useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
             foreach (var dqlSection in dqlSections)
             {
@@ -67,8 +67,11 @@ namespace Emc.Documentum.Rest.Test
             }
         }
         //r_modify_date >= date('01.01.2021 00:00:00', 'dd.MM.yyyy HH:mm:ss')
-        private static void SetupClient(bool windowsAuth, string username, string password, string logLevel = null)
+        private static void SetupClient(bool windowsAuth, string username, string password, bool ignoreInvalidSslCertificate, string logLevel = null)
         {
+            // unfortunately, in some cases SSL-certificate may be expired
+            if (ignoreInvalidSslCertificate) ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+
             client = windowsAuth ? new RestController(5) : new RestController(username, password);
             JsonDotnetJsonSerializer serializer = new JsonDotnetJsonSerializer();
             serializer.PrintStreamBeforeDeserialize = true;
@@ -94,7 +97,7 @@ namespace Emc.Documentum.Rest.Test
                 }
                 else
                 {
-                    string timeStamp = " and r_modify_date >= date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
+                    string timeStamp = (dql.Contains("where ") ? " and " : " where ") + "r_modify_date >= date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
                     dql += timeStamp;
                 }
             }
