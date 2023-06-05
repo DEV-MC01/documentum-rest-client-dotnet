@@ -111,7 +111,7 @@ namespace Emc.Documentum.Rest.Test
             Console.WriteLine("Parsing query results...");
 
             List<string> cvsFileContent = new List<string>();
-            cvsFileContent.Add("\"DocId\";\"AttributeName\";\"AttributeValue\"");
+            cvsFileContent.Add("\"DocNumber\";\"AttributeName\";\"AttributeValue\"");
 
             // Rootobject dataSet2 = JsonConvert.DeserializeObject<Rootobject>(string.Join("",fresult), new JavaScriptDateTimeConverter());
             Console.OutputEncoding = Encoding.UTF8;
