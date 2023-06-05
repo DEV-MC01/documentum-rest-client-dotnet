@@ -6,14 +6,13 @@ using System.Configuration;
 using Emc.Documentum.Rest.Net;
 using System.IO;
 using System.Collections.Specialized;
-using System.Reflection;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Net;
 
 namespace Emc.Documentum.Rest.Test
 {
-    class Program
+	class Program
     {
         private static RestController client;
         private static bool getFiles;
@@ -55,7 +54,7 @@ namespace Emc.Documentum.Rest.Test
             {
                 Console.WriteLine("Section '{0}' is being processed...", dqlSection);
                 var documentArea = dqlSection.Replace("dql_", "");
-                var objectIds = ExportDocumentMetadata(config[dqlSection], documentArea + "_");
+                var objectIds = ExportDocumentMetadata(config[dqlSection], documentArea + "_", logLevel);
                 if (getFiles) useCaseTests.Start(documentArea, objectIds);
                 Console.WriteLine("Section '{0}' has been processed.", dqlSection);
             }
@@ -81,7 +80,7 @@ namespace Emc.Documentum.Rest.Test
             client.Logger = new Utility.LoggerFacade("RestServices", "NA", "NA", username, parsedLogLevel);
         }
 
-        private static string[] ExportDocumentMetadata(string dql, string fileNamePrefix)
+        private static string[] ExportDocumentMetadata(string dql, string fileNamePrefix, string logLevel)
         {
             var objectIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             Console.WriteLine("Fetching documents metadata from Capital Project...");
@@ -130,36 +129,42 @@ namespace Emc.Documentum.Rest.Test
                         PropertyNameCaseInsensitive = true
 
                     };
-                    rootObject = System.Text.Json.JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
+                    rootObject = JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine("Deserialization ERROR: \r" + fixedDate + "\r with error: \r " + e.Message);
                 }
 
-                //Console.WriteLine(rootObject.properties.r_object_id);
                 try
                 {
-                    foreach (PropertyInfo prop in rootObject.properties.GetType().GetProperties())
-                    {
-                        //Console.WriteLine(prop.Name);
-                        if (prop.GetValue(rootObject.properties) != null)
-                        {
-                            //Console.WriteLine(prop.GetType());
-                            string propertyName = prop.Name;
-                            //string objectName = rootObject.properties.object_name;
-                            string objectName = rootObject.properties.r_object_id;
-                            if (!string.IsNullOrWhiteSpace(objectName)) objectIds.Add(objectName);
+                    string objectName = rootObject.properties["r_object_id"];
+                    if (!string.IsNullOrWhiteSpace(objectName)) objectIds.Add(objectName);
 
-                            var propertyValue = prop.GetValue(rootObject.properties).ToString()
+                    LogDebug(string.Format("{0}", objectName), logLevel);
+                    LogDebug("Properties observed:", logLevel);
+
+                    foreach (var prop in rootObject.properties)
+                    {
+                        LogDebug(string.Format("Name: {0}", prop.Key), logLevel);
+                        if (prop.Value != null)
+                        {
+                            string propertyName = prop.Key;
+                            var propertyValue = prop.Value
                                 .Replace('"', ' ').Replace("\r\n", " ").Replace("\r", " ")
                                 .Replace("\n", " ").Replace("\t", " ").Replace(";", "_")
                                 .Replace('"', ' ').Replace(Environment.NewLine, " ").Replace("\\", " ").Trim();
                             if (propertyName.Contains("date"))
                             {
-                                DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                                propertyValue = dateTime.AddMilliseconds(long.Parse(propertyValue)).ToString("yyyy-MM-dd hh:mm:ss");
-
+                                if (DateTime.TryParse(propertyValue, out var dateTime))
+                                {
+                                    propertyValue = dateTime.ToString("yyyy-MM-dd hh:mm:ss");
+                                }
+                                else
+                                {
+                                    dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+                                    propertyValue = dateTime.AddMilliseconds(long.Parse(propertyValue)).ToString("yyyy-MM-dd hh:mm:ss");
+                                }
                             }
 
                             //Due to limit value length in GK, we need to cut long descriptions
@@ -171,9 +176,8 @@ namespace Emc.Documentum.Rest.Test
                             {
                                 cvsFileContent.Add("\"" + objectName + "\";\"" + propertyName + "\";\"" + propertyValue + "\"");
                             }
-
+                            LogDebug(string.Format("Name: {0}, Value: {1}", propertyName, propertyValue), logLevel);
                         }
-                        //Console.WriteLine("Name: {0}, Value: {1}", prop.Name, propertyValue);
                     }
                 }
                 catch (Exception)
@@ -285,6 +289,14 @@ namespace Emc.Documentum.Rest.Test
             var exportDataFiles = Directory.GetFiles(saveResultsPath ?? ".\\", "*exportData.*", SearchOption.TopDirectoryOnly);
             foreach (var exportDataFile in exportDataFiles)
                 File.Delete(exportDataFile);
+        }
+
+        private static void LogDebug(string message, string logLevel)
+        {
+            if (string.Equals(logLevel, "debug", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine(message);
+            }
         }
     }
 }
