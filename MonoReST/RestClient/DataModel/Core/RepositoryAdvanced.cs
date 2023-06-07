@@ -612,41 +612,51 @@ namespace Emc.Documentum.Rest.DataModel
                 int totalResults = queryResult.Total;
                 double totalPages = queryResult.PageCount;
                 int docProcessed = 0;
-                Dictionary<string, int> kp = new Dictionary<string, int>();
 
                 for (int i = 0; i < totalPages; i++)
                 {
                     List<PersistentObject> objs = ObjectUtil.getFeedAsList(queryResult, false);
                     foreach (PersistentObject obj in objs)
                     {
+                        var objectName = obj.GetPropertyValue("object_name") as string ?? string.Empty;
+                        var objectRevision = obj.GetPropertyValue("eif_revision") as string ?? string.Empty;
+
                         SingleGetOptions options = new SingleGetOptions();
                         options.SetQuery("media-url-policy", "local");
                         Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
                         ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
                         if (primaryContentMeta == null)
                         {
-                            Console.WriteLine($"No primary content has been found for the document '{obj.GetPropertyValue("object_name")}'.");
+                            Console.WriteLine($"No primary content has been found for the document '{objectName}'.");
                             docProcessed++;
                             continue;
                         }
-                        FileInfo downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
+
+                        FileInfo downloadedContentFile = null;
+                        try
+                        {
+                            downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
+                        }
+                        catch(Exception e) 
+                        {
+                            Console.WriteLine("The following error has occurred during downloading a file for the document '{0}'\n{1}", objectName, e.ToString());
+                            docProcessed++;
+                            continue;
+                        }
+
                         // string path = "c:/temp/case" + obj.getAttributeValue("r_folder_path").ToString();
                         string filename = downloadedContentFile.Name;
 
-                        // If a file that is the same name is exported, give it a unique name
-                        if (kp.Keys.Contains(filename))
-                        {
-                            int len = filename.LastIndexOf(".");
-                            if (len < 0) len = filename.Length;
-                            kp[filename] += 1;
-                            string insertinto = "_" + kp[filename].ToString();
-                            filename = filename.Insert(len, insertinto);
-                            kp.Add(filename, 0);
-                        }
-                        else { kp.Add(filename, 0); }
+                        string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
+                            ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim()), !string.IsNullOrWhiteSpace(objectRevision)
+                                ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim()) : string.Empty)
+                            : string.Empty;
 
+                        string targetDirectory = folderName == null ? Path.AltDirectorySeparatorChar + targetSubDirectory : folderName + Path.AltDirectorySeparatorChar + targetSubDirectory;
+                        if (!Directory.Exists(targetDirectory))
+                            Directory.CreateDirectory(targetDirectory);
 
-                        string targetPath = folderName == null ? Path.AltDirectorySeparatorChar + filename : folderName + Path.AltDirectorySeparatorChar + filename;
+                        string targetPath = targetDirectory + Path.AltDirectorySeparatorChar + filename;
                         File.Move(downloadedContentFile.FullName, targetPath);
                         docProcessed++;
 
@@ -673,7 +683,7 @@ namespace Emc.Documentum.Rest.DataModel
             if (string.IsNullOrEmpty(objectIDs)) Console.WriteLine("No documents to be downloaded have been found.");
 
             objectIDs = "'" + objectIDs.Replace(",", "','") + "'";
-            string query = String.Format("select r_object_id,object_name from dm_document where r_object_id IN({0})", objectIDs);
+            string query = String.Format("select dm_document.r_object_id, dm_document.object_name, eifx_deliverable_doc.eif_revision from dm_document left join eifx_deliverable_doc on eifx_deliverable_doc.r_object_id = dm_document.r_object_id where dm_document.r_object_id IN({0})", objectIDs);
             Console.WriteLine("Export documents to the folder " + targetFolder);
             Console.WriteLine("Final query: \n" + query);
             ExportToFolder(query, targetFolder);

@@ -31,7 +31,7 @@ namespace Emc.Documentum.Rest.Test
             NameValueCollection config = ConfigurationManager.GetSection("restconfig") as NameValueCollection;
 
             itemsPerPage = int.Parse(config["itemsPerPage"]);
-            saveResultsPath = config["exportFilesDirectory"];
+            saveResultsPath = config["exportMetadataDirectory"];
             var windowsAuthentication = Boolean.Parse(config["windowsAuthentication"]);
             var defaultUsername = config["defaultUsername"];
             var defaultPassword = config["defaultPassword"];
@@ -47,7 +47,7 @@ namespace Emc.Documentum.Rest.Test
             var logLevel = config["logLevel"];
             var dqlSections = config.AllKeys.Where(k => k.StartsWith("dql_"));
 
-            RemoveOldResultFiles();
+            PrepareResultArea();
             SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
             var useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
             foreach (var dqlSection in dqlSections)
@@ -284,8 +284,11 @@ namespace Emc.Documentum.Rest.Test
             }
         }
 
-        public static void RemoveOldResultFiles()
+        public static void PrepareResultArea()
         {
+            if (!Directory.Exists(saveResultsPath))
+                Directory.CreateDirectory(saveResultsPath);
+
             var exportDataFiles = Directory.GetFiles(saveResultsPath ?? ".\\", "*exportData.*", SearchOption.TopDirectoryOnly);
             foreach (var exportDataFile in exportDataFiles)
                 File.Delete(exportDataFile);
