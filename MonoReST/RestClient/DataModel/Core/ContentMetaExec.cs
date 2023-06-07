@@ -55,9 +55,16 @@ namespace Emc.Documentum.Rest.DataModel
             }
 
             fileName = ObjectUtil.getSafeFileName(fileName);
+            string fullPath;
             // Ensure file extension is not already there
-
-            string fullPath = Path.Combine(Path.GetTempPath(), fileName + ((fileExtension == null || fileExtension.Equals("")) ? "" : "." + fileExtension));
+            try
+            {
+                fullPath = Path.Combine(Path.GetTempPath(), fileName + (string.IsNullOrWhiteSpace(fileExtension) ? "" : ".") + fileExtension);
+            }
+            catch (Exception e)
+            {
+                throw new Exception(string.Format("The following path creation error has occurred. File Name = '{0}', File Name Extension = '{1}'.", fileName, fileExtension), e);
+            }
 
             using (Stream media = DownloadContentMediaStream())
             {

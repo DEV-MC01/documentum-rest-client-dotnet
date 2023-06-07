@@ -408,6 +408,9 @@ namespace Emc.Documentum.Rest.Http.Utility
             fileName = fileName.Replace('*', '#');
             fileName = fileName.Replace('|', '#');
             fileName = fileName.Replace("\"", "'");
+            fileName = fileName.Replace("\n", "");
+            fileName = fileName.Replace("\r", "");
+            fileName = fileName.Replace("\t", "");
             return fileName;
         }
     }
