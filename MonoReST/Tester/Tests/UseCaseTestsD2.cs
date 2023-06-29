@@ -21,15 +21,16 @@ namespace Emc.Documentum.Rest.Test
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="client"></param>
-        /// <param name="RestHomeUri"></param>
-        /// <param name="repositoryName"></param>
-        /// <param name="printResult"></param>
-        /// <param name="path"></param>
-        /// <param name="ThreadNum"></param>
-        /// <param name="numDocs"></param>
-        public UseCaseTestsD2(RestController client, string RestHomeUri, string repositoryName, bool printResult, string path, 
-            int ThreadNum, int numDocs) : base(client, RestHomeUri, repositoryName, printResult, false, path, ThreadNum, numDocs)
+        /// <param name="client">The client.</param>
+        /// <param name="configProfile">The configuration profile.</param>
+        /// <param name="RestHomeUri">The rest home URI.</param>
+        /// <param name="repositoryName">Name of the repository.</param>
+        /// <param name="printResult">if set to <c>true</c> [print result].</param>
+        /// <param name="path">The path.</param>
+        /// <param name="ThreadNum">The thread number.</param>
+        /// <param name="numDocs">The number docs.</param>
+        public UseCaseTestsD2(RestController client, NameValueCollection configProfile, string RestHomeUri, string repositoryName, bool printResult, string path,
+            int ThreadNum, int numDocs) : base(client, configProfile, RestHomeUri, repositoryName, printResult, false, path, ThreadNum, numDocs)
         {
 
         }

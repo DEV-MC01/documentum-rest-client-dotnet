@@ -54,7 +54,7 @@ namespace Emc.Documentum.Rest.Test
 
             PrepareResultArea();
             SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
-            var useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
+            var useCaseTests = new UseCaseTests(client, _currentConfigProfile, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
             foreach (var dqlSection in dqlSections)
             {
                 Console.WriteLine("Section '{0}' is being processed...", dqlSection);

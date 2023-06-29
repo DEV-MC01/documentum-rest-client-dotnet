@@ -6,13 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using System.Configuration;
 using System.Collections.Specialized;
 using System.Windows.Forms;
-using System.Threading;
-using Emc.Documentum.Rest.Utility;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -21,6 +17,7 @@ namespace Emc.Documentum.Rest.Test
     /// </summary>
     public class UseCaseTests : IDisposable
     {
+        protected NameValueCollection configProfile;
         protected RestController client;
         protected string RestHomeUri;
         protected string repositoryName;
@@ -57,8 +54,11 @@ namespace Emc.Documentum.Rest.Test
         /// <param name="path"></param>
         /// <param name="ThreadNum"></param>
         /// <param name="numDocs"></param>
-        public UseCaseTests(RestController client, string RestHomeUri, string repositoryName, bool printResult, bool pauseBetweenOperations, string path, int ThreadNum, int numDocs)
+        public UseCaseTests(RestController client, NameValueCollection configProfile, string RestHomeUri, string repositoryName, bool printResult, bool pauseBetweenOperations, string path, int ThreadNum, int numDocs)
         {
+            if (configProfile == null) throw new ArgumentNullException("configProfile");
+
+            this.configProfile = configProfile;
             this.client = client;
             this.RestHomeUri = RestHomeUri;
             this.repositoryName = repositoryName;
@@ -137,16 +137,8 @@ namespace Emc.Documentum.Rest.Test
         protected void GetPreferences(string testSubDirectory)
         {
             bool useFormLogging = false;
-            NameValueCollection testConfig = null;
-            try {
-				testConfig = ConfigurationManager.GetSection("restconfig") as NameValueCollection;
-			} catch(ConfigurationErrorsException se) {
-				Console.WriteLine("Configuration could  not load. If you are running under Visual Studio, ensure:\n" +
-					"\n\"<section name=\"restconfig\" type=\"System.Configuration.NameValueSectionHandler\"/> is used. " +
-					"\nIf running under Mono, ensure: " + 
-					"\n<section name=\"restconfig\" type=\"System.Configuration.NameValueSectionHandler,System\"/> is used");
-				Console.WriteLine ("\n\n" + se + "\n\n");
-			}
+            NameValueCollection testConfig = configProfile;
+
             if (testConfig != null)
             {
                 //useFormLogging = Boolean.Parse(testConfig["useformlogging"].ToString());
