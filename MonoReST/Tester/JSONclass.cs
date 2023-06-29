@@ -1,10 +1,5 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Emc.Documentum.Rest.DocClass
 {
@@ -30,6 +25,7 @@ namespace Emc.Documentum.Rest.LinksClass
     }
 
 }
+
 namespace Emc.Documentum.Rest.TRM_Class
 {
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse); 
@@ -82,6 +78,4 @@ namespace Emc.Documentum.Rest.TRM_Class
         public string definition { get; set; }
         public Properties properties { get; set; }
     }
-
-
 }

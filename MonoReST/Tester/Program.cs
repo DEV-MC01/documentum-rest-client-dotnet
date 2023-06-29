@@ -7,13 +7,17 @@ using Emc.Documentum.Rest.Net;
 using System.IO;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Net;
+using Newtonsoft.Json;
 
 namespace Emc.Documentum.Rest.Test
 {
 	class Program
     {
+        private const string ARGUMENT_NAME_REMOTE_CONFIG_PATH = "-remoteConfigPath";
+
+        private static string _remoteConfigPath;
+        private static NameValueCollection _currentConfigProfile;
         private static RestController client;
         private static bool getFiles;
         private static bool getDelta;
@@ -28,33 +32,34 @@ namespace Emc.Documentum.Rest.Test
         [STAThread]
         static void Main(string[] args)
         {
-            NameValueCollection config = ConfigurationManager.GetSection("restconfig") as NameValueCollection;
+            AcceptArguments(args);
+            ApplyConfig();
 
-            itemsPerPage = int.Parse(config["itemsPerPage"]);
-            saveResultsPath = config["exportMetadataDirectory"];
-            var windowsAuthentication = Boolean.Parse(config["windowsAuthentication"]);
-            var defaultUsername = config["defaultUsername"];
-            var defaultPassword = config["defaultPassword"];
+            itemsPerPage = int.Parse(_currentConfigProfile["itemsPerPage"]);
+            saveResultsPath = _currentConfigProfile["exportMetadataDirectory"];
+            var windowsAuthentication = Boolean.Parse(_currentConfigProfile["windowsAuthentication"]);
+            var defaultUsername = _currentConfigProfile["defaultUsername"];
+            var defaultPassword = _currentConfigProfile["defaultPassword"];
             var decryptedPassword = Utl.Crypt.DecryptString(defaultPassword);
-            var ignoreInvalidSslCertificate = Boolean.Parse(config["ignoreInvalidSslCertificate"]);
-            RestHomeUri = config["defaultRestHomeUri"];
-            repositoryName = config["defaultRepositoryName"];
-            generateCSV = Boolean.Parse(config["generateCSV"]);
-            generateJSON = Boolean.Parse(config["generateJSON"]);
-            getFiles = Boolean.Parse(config["getFiles"]);
-            getDelta = Boolean.Parse(config["getDelta"]);
-            timeStampFilePath = config["timeStampfilePath"];
-            var logLevel = config["logLevel"];
-            var dqlSections = config.AllKeys.Where(k => k.StartsWith("dql_"));
+            var ignoreInvalidSslCertificate = Boolean.Parse(_currentConfigProfile["ignoreInvalidSslCertificate"]);
+            RestHomeUri = _currentConfigProfile["defaultRestHomeUri"];
+            repositoryName = _currentConfigProfile["defaultRepositoryName"];
+            generateCSV = Boolean.Parse(_currentConfigProfile["generateCSV"]);
+            generateJSON = Boolean.Parse(_currentConfigProfile["generateJSON"]);
+            getFiles = Boolean.Parse(_currentConfigProfile["getFiles"]);
+            getDelta = Boolean.Parse(_currentConfigProfile["getDelta"]);
+            timeStampFilePath = _currentConfigProfile["timeStampfilePath"];
+            var logLevel = _currentConfigProfile["logLevel"];
+            var dqlSections = _currentConfigProfile.AllKeys.Where(k => k.StartsWith("dql_"));
 
-            PrepareResultArea();
+			PrepareResultArea();
             SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
             var useCaseTests = new UseCaseTests(client, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
             foreach (var dqlSection in dqlSections)
             {
                 Console.WriteLine("Section '{0}' is being processed...", dqlSection);
                 var documentArea = dqlSection.Replace("dql_", "");
-                var objectIds = ExportDocumentMetadata(config[dqlSection], documentArea + "_", logLevel);
+                var objectIds = ExportDocumentMetadata(_currentConfigProfile[dqlSection], documentArea + "_", logLevel);
                 if (getFiles) useCaseTests.Start(documentArea, objectIds);
                 Console.WriteLine("Section '{0}' has been processed.", dqlSection);
             }
@@ -122,14 +127,7 @@ namespace Emc.Documentum.Rest.Test
                 string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        AllowTrailingCommas = true,
-                        PropertyNameCaseInsensitive = true
-
-                    };
-                    rootObject = JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
+                    rootObject = JsonConvert.DeserializeObject<DocClass.CP_Document>(fixedDate);
                 }
                 catch (Exception e)
                 {
@@ -192,70 +190,70 @@ namespace Emc.Documentum.Rest.Test
             return objectIds.ToArray();
         }
 
-        private static void ExportLINKmetada(string dql)
-        {
-            Console.WriteLine("Getting link data from Capital project...");
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            string fileNamePrefix = "link_";
-            if (getDelta)
-            {
-                if (!File.Exists(timeStampFilePath))
-                {
-                    File.Create(timeStampFilePath);
-                }
-                else
-                {
-                    string timeStamp = " where trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
-                    dql += timeStamp;
-                }
-            }
-            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
-            if (fresult.Count < 1)
-            {
-                return;
-            }
+  //      private static void ExportLINKmetada(string dql)
+  //      {
+  //          Console.WriteLine("Getting link data from Capital project...");
+  //          Stopwatch stopwatch = new Stopwatch();
+  //          stopwatch.Start();
+  //          string fileNamePrefix = "link_";
+  //          if (getDelta)
+  //          {
+  //              if (!File.Exists(timeStampFilePath))
+  //              {
+  //                  File.Create(timeStampFilePath);
+  //              }
+  //              else
+  //              {
+  //                  string timeStamp = " where trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
+  //                  dql += timeStamp;
+  //              }
+  //          }
+  //          List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
+  //          if (fresult.Count < 1)
+  //          {
+  //              return;
+  //          }
 
-            //List<string> jsonfileformatresults = new List<string>();
-            stopwatch.Stop();
-            Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
-            Console.WriteLine("Parsing query results...");
-            List<string> cvsFileContent = new List<string>();
-            if (generateCSV)
-            {
-                cvsFileContent.Add("\"Link_id\";\"parent_id\";\"child_id\"");
-                foreach (var item in fresult)
-                {
-                    LinksClass.TRMtoDocLink rootObject = new LinksClass.TRMtoDocLink();
-                    try
-                    {
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            AllowTrailingCommas = true,
-                            PropertyNameCaseInsensitive = true
+  //          //List<string> jsonfileformatresults = new List<string>();
+  //          stopwatch.Stop();
+  //          Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
+  //          Console.WriteLine("Parsing query results...");
+  //          List<string> cvsFileContent = new List<string>();
+  //          if (generateCSV)
+  //          {
+  //              cvsFileContent.Add("\"Link_id\";\"parent_id\";\"child_id\"");
+  //              foreach (var item in fresult)
+  //              {
+  //                  LinksClass.TRMtoDocLink rootObject = new LinksClass.TRMtoDocLink();
+  //                  try
+  //                  {
+  //                      var options = new JsonSerializerOptions
+  //                      {
+  //                          WriteIndented = true,
+  //                          AllowTrailingCommas = true,
+  //                          PropertyNameCaseInsensitive = true
 
-                        };
-                        rootObject = System.Text.Json.JsonSerializer.Deserialize<LinksClass.TRMtoDocLink>(item, options);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("deserializing ERROR: \r" + item + "\r with error: \r " + e.Message);
-                    }
+  //                      };
+  //                      rootObject = System.Text.Json.JsonSerializer.Deserialize<LinksClass.TRMtoDocLink>(item, options);
+  //                  }
+  //                  catch (Exception e)
+  //                  {
+  //                      Console.WriteLine("deserializing ERROR: \r" + item + "\r with error: \r " + e.Message);
+  //                  }
 
-                    try
-                    {
-                        cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id + "\"");
-                    }
-                    catch (Exception)
-                    {
-                        Console.WriteLine("Error occured while parsing results");
-                    }
-                }
-            }
+  //                  try
+  //                  {
+  //                      cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id + "\"");
+  //                  }
+  //                  catch (Exception)
+  //                  {
+  //                      Console.WriteLine("Error occured while parsing results");
+  //                  }
+  //              }
+  //          }
 
-            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
-		}
+  //          SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
+  //    }
 
         public static void SaveResultToFile(List<string> csvContent, List<string> jsonContent, string fileNamePrefix)
         {
@@ -301,6 +299,47 @@ namespace Emc.Documentum.Rest.Test
                 Console.WriteLine(message);
             }
         }
-    }
+
+        private static void AcceptArguments(string[] args)
+        {
+            if (args?.Length == 0) return;
+
+            foreach (var arg in args)
+            {
+                var argComponents = arg?.Split(new[] { "=" }, StringSplitOptions.RemoveEmptyEntries);
+                if (argComponents?.Length != 2) throw new ConfigurationException($"The argument '{arg}' could not be accepted as it should fit the format '-argName=argValue'");
+
+                var argName = argComponents[0];
+                switch (argName)
+                {
+                    case ARGUMENT_NAME_REMOTE_CONFIG_PATH:
+                        _remoteConfigPath = argComponents[1];
+                        break;
+                    default:
+                        throw new NotSupportedException($"The input parameter '{argName}' is not supported.");
+                }
+            }
+        }
+
+        private static void ApplyConfig()
+        {
+            if (string.IsNullOrWhiteSpace(_remoteConfigPath))
+            {
+                _currentConfigProfile = ConfigurationManager.GetSection("restconfig") as NameValueCollection;
+                return;
+            }
+
+            if (!File.Exists(_remoteConfigPath)) throw new FileNotFoundException($"The remote config. file '{_remoteConfigPath}' could not be found.");
+
+            var configMap = new ExeConfigurationFileMap();
+            configMap.ExeConfigFilename = _remoteConfigPath;
+            var remoteConfig = ConfigurationManager.OpenMappedExeConfiguration(configMap, ConfigurationUserLevel.None);
+
+            var settingsXml = remoteConfig.GetSection("restconfig").SectionInformation.GetRawXml();
+            var settingsXmlDoc = new System.Xml.XmlDocument();
+            settingsXmlDoc.Load(new StringReader(settingsXml));
+            _currentConfigProfile = new NameValueSectionHandler().Create(null, null, settingsXmlDoc.DocumentElement) as NameValueCollection;
+        }
+	}
 }
 
