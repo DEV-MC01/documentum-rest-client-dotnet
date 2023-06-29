@@ -1,9 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text.Json;
 
 namespace DQLinterpreter.Tests
 {
@@ -15,9 +15,9 @@ namespace DQLinterpreter.Tests
 		{
 			string[] fresult = new[] { @"
 {
-            ""definition"": ""https://s001rp-stdo1/dctm-rest/repositories/kvip/types/eifx_deliverable_doc"",
-            ""json-root"": ""query-result"",
-            ""properties"":
+            ""definition"": ""https://s001rp-stdo1/dctm-rest/repositories/kvip/types/eifx_deliverable_doc""
+            ,""json-root"": ""query-result""
+            ,""PROPERTIES"":
                 {
                 ""eif_acceptance_code"": ""B - \u041d\u0435\u0437\u043d\u0430\u0447\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0437\u0430\u043c\u0435\u0447\u0430\u043d\u0438\u044f. \u0423\u0447\u0435\u0441\u0442\u044c \u0432 \u0441\u043b\u0443\u0447\u0430\u0435 \u0432\u044b\u043f\u0443\u0441\u043a\u0430 \u043d\u043e\u0432\u043e\u0439 \u0440\u0435\u0432\u0438\u0437\u0438\u0438"",
                 ""eif_alt_doc_number"": ""PDH2.12953-123-TX.DS-4071"",
@@ -31,7 +31,7 @@ namespace DQLinterpreter.Tests
                 ""object_name"": ""PDH2.12953-123-TX.DS-4071"",
                 ""r_creation_date"": ""2023-05-22T12:46:52.000+00:00"",
                 ""r_modify_date"": ""2023-05-30T19:21:50.000+00:00"",
-                ""r_object_id"": ""0903383f8125fc83"",
+                ""R_OBJECT_ID"": ""0903383f8125fc83"",
                 ""sib_change_number"": """",
                 ""sib_customer"": """",
                 ""sib_doc_type_code"": """",
@@ -55,14 +55,7 @@ namespace DQLinterpreter.Tests
 				string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
 				try
 				{
-					var options = new JsonSerializerOptions
-					{
-						WriteIndented = true,
-						AllowTrailingCommas = true,
-						PropertyNameCaseInsensitive = true
-
-					};
-					rootObject = JsonSerializer.Deserialize<Emc.Documentum.Rest.DocClass.CP_Document>(fixedDate, options);
+					rootObject = JsonConvert.DeserializeObject<Emc.Documentum.Rest.DocClass.CP_Document>(fixedDate);
 				}
 				catch (Exception e)
 				{

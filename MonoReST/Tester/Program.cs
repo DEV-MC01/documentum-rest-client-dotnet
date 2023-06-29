@@ -7,8 +7,8 @@ using Emc.Documentum.Rest.Net;
 using System.IO;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Net;
+using Newtonsoft.Json;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -127,14 +127,7 @@ namespace Emc.Documentum.Rest.Test
                 string fixedDate = item.Replace("new Date(\r\n      ", "\"").Replace("\r\n    ),", "\",").Replace("\r\n    )\r\n", "\"\r\n");
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        AllowTrailingCommas = true,
-                        PropertyNameCaseInsensitive = true
-
-                    };
-                    rootObject = JsonSerializer.Deserialize<DocClass.CP_Document>(fixedDate, options);
+                    rootObject = JsonConvert.DeserializeObject<DocClass.CP_Document>(fixedDate);
                 }
                 catch (Exception e)
                 {
@@ -197,70 +190,70 @@ namespace Emc.Documentum.Rest.Test
             return objectIds.ToArray();
         }
 
-        private static void ExportLINKmetada(string dql)
-        {
-            Console.WriteLine("Getting link data from Capital project...");
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-            string fileNamePrefix = "link_";
-            if (getDelta)
-            {
-                if (!File.Exists(timeStampFilePath))
-                {
-                    File.Create(timeStampFilePath);
-                }
-                else
-                {
-                    string timeStamp = " where trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
-                    dql += timeStamp;
-                }
-            }
-            List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
-            if (fresult.Count < 1)
-            {
-                return;
-            }
+  //      private static void ExportLINKmetada(string dql)
+  //      {
+  //          Console.WriteLine("Getting link data from Capital project...");
+  //          Stopwatch stopwatch = new Stopwatch();
+  //          stopwatch.Start();
+  //          string fileNamePrefix = "link_";
+  //          if (getDelta)
+  //          {
+  //              if (!File.Exists(timeStampFilePath))
+  //              {
+  //                  File.Create(timeStampFilePath);
+  //              }
+  //              else
+  //              {
+  //                  string timeStamp = " where trm.r_modify_date>=date('" + File.ReadAllText(timeStampFilePath) + "','dd.MM.yyyy')";
+  //                  dql += timeStamp;
+  //              }
+  //          }
+  //          List<string> fresult = DqlQueryExecute.Run(client, RestHomeUri, dql, itemsPerPage, repositoryName);
+  //          if (fresult.Count < 1)
+  //          {
+  //              return;
+  //          }
 
-            //List<string> jsonfileformatresults = new List<string>();
-            stopwatch.Stop();
-            Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
-            Console.WriteLine("Parsing query results...");
-            List<string> cvsFileContent = new List<string>();
-            if (generateCSV)
-            {
-                cvsFileContent.Add("\"Link_id\";\"parent_id\";\"child_id\"");
-                foreach (var item in fresult)
-                {
-                    LinksClass.TRMtoDocLink rootObject = new LinksClass.TRMtoDocLink();
-                    try
-                    {
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            AllowTrailingCommas = true,
-                            PropertyNameCaseInsensitive = true
+  //          //List<string> jsonfileformatresults = new List<string>();
+  //          stopwatch.Stop();
+  //          Console.WriteLine("Time elapsed to get data from Capital Project: " + stopwatch.Elapsed);
+  //          Console.WriteLine("Parsing query results...");
+  //          List<string> cvsFileContent = new List<string>();
+  //          if (generateCSV)
+  //          {
+  //              cvsFileContent.Add("\"Link_id\";\"parent_id\";\"child_id\"");
+  //              foreach (var item in fresult)
+  //              {
+  //                  LinksClass.TRMtoDocLink rootObject = new LinksClass.TRMtoDocLink();
+  //                  try
+  //                  {
+  //                      var options = new JsonSerializerOptions
+  //                      {
+  //                          WriteIndented = true,
+  //                          AllowTrailingCommas = true,
+  //                          PropertyNameCaseInsensitive = true
 
-                        };
-                        rootObject = System.Text.Json.JsonSerializer.Deserialize<LinksClass.TRMtoDocLink>(item, options);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("deserializing ERROR: \r" + item + "\r with error: \r " + e.Message);
-                    }
+  //                      };
+  //                      rootObject = System.Text.Json.JsonSerializer.Deserialize<LinksClass.TRMtoDocLink>(item, options);
+  //                  }
+  //                  catch (Exception e)
+  //                  {
+  //                      Console.WriteLine("deserializing ERROR: \r" + item + "\r with error: \r " + e.Message);
+  //                  }
 
-                    try
-                    {
-                        cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id + "\"");
-                    }
-                    catch (Exception)
-                    {
-                        Console.WriteLine("Error occured while parsing results");
-                    }
-                }
-            }
+  //                  try
+  //                  {
+  //                      cvsFileContent.Add("\"" + rootObject.properties.r_object_id + "\";\"" + rootObject.properties.parent_id + "\";\"" + rootObject.properties.child_id + "\"");
+  //                  }
+  //                  catch (Exception)
+  //                  {
+  //                      Console.WriteLine("Error occured while parsing results");
+  //                  }
+  //              }
+  //          }
 
-            SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
-        }
+  //          SaveResultToFile(cvsFileContent, fresult, fileNamePrefix);
+  //    }
 
         public static void SaveResultToFile(List<string> csvContent, List<string> jsonContent, string fileNamePrefix)
         {
@@ -347,6 +340,6 @@ namespace Emc.Documentum.Rest.Test
             settingsXmlDoc.Load(new StringReader(settingsXml));
             _currentConfigProfile = new NameValueSectionHandler().Create(null, null, settingsXmlDoc.DocumentElement) as NameValueCollection;
         }
-    }
+	}
 }
 
