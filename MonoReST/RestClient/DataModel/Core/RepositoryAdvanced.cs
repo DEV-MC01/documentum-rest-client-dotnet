@@ -648,8 +648,8 @@ namespace Emc.Documentum.Rest.DataModel
                         string filename = downloadedContentFile.Name;
 
                         string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
-                            ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim()), !string.IsNullOrWhiteSpace(objectRevision)
-                                ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim()) : string.Empty)
+                            ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim().TrimEnd('.')), !string.IsNullOrWhiteSpace(objectRevision)
+                                ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
                             : string.Empty;
 
                         string targetDirectory = folderName == null ? Path.AltDirectorySeparatorChar + targetSubDirectory : folderName + Path.AltDirectorySeparatorChar + targetSubDirectory;
