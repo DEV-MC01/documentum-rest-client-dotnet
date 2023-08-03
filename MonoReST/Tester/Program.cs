@@ -49,25 +49,55 @@ namespace Emc.Documentum.Rest.Test
             getFiles = Boolean.Parse(_currentConfigProfile["getFiles"]);
             getDelta = Boolean.Parse(_currentConfigProfile["getDelta"]);
             timeStampFilePath = _currentConfigProfile["timeStampfilePath"];
+            var saveLogFile = Boolean.Parse(_currentConfigProfile["saveLogFile"]);
             var logLevel = _currentConfigProfile["logLevel"];
             var dqlSections = _currentConfigProfile.AllKeys.Where(k => k.StartsWith("dql_"));
 
             PrepareResultArea();
-            SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
-            var useCaseTests = new UseCaseTests(client, _currentConfigProfile, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
-            foreach (var dqlSection in dqlSections)
+
+            FileStream logFileStream = null;
+            StreamWriter logStreamWriter = null;
+            if (saveLogFile)
             {
-                Console.WriteLine("Section '{0}' is being processed...", dqlSection);
-                var documentArea = dqlSection.Replace("dql_", "");
-                var objectIds = ExportDocumentMetadata(_currentConfigProfile[dqlSection], documentArea + "_", logLevel);
-                if (getFiles) useCaseTests.Start(documentArea, objectIds);
-                Console.WriteLine("Section '{0}' has been processed.", dqlSection);
+                var logFile = Path.Combine(saveResultsPath, "logFile.txt");
+                logFileStream = new FileStream(logFile, FileMode.Create, FileAccess.Write);
+                logStreamWriter = new StreamWriter(logFileStream);
+                logStreamWriter.AutoFlush = true;
+                Console.SetOut(logStreamWriter);
             }
 
-            if (getDelta)
+            try
             {
-                string newTimeStamp = DateTime.Now.ToString("dd.MM.yyyy");
-                File.WriteAllText(timeStampFilePath, newTimeStamp);
+                SetupClient(windowsAuthentication, defaultUsername, !string.IsNullOrEmpty(decryptedPassword) ? decryptedPassword : defaultPassword, ignoreInvalidSslCertificate, logLevel);
+                var useCaseTests = new UseCaseTests(client, _currentConfigProfile, RestHomeUri, repositoryName, false, false, ".\\DocRenditions", 1, 1);
+                foreach (var dqlSection in dqlSections)
+                {
+                    Console.WriteLine("Section '{0}' is being processed...", dqlSection);
+                    var documentArea = dqlSection.Replace("dql_", "");
+                    var objectIds = ExportDocumentMetadata(_currentConfigProfile[dqlSection], documentArea + "_", logLevel);
+                    if (getFiles) useCaseTests.Start(documentArea, objectIds);
+                    Console.WriteLine("Section '{0}' has been processed.", dqlSection);
+                }
+
+                if (getDelta)
+                {
+                    string newTimeStamp = DateTime.Now.ToString("dd.MM.yyyy");
+                    File.WriteAllText(timeStampFilePath, newTimeStamp);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine();
+                Console.WriteLine("The following fatal exception has been raised.\n{0}", ex);
+            }
+            finally
+            {
+                if (saveLogFile)
+                {
+                    Console.SetOut(TextWriter.Null);
+                    logStreamWriter?.Close();
+                    logFileStream?.Close();
+                }
             }
         }
         //r_modify_date >= date('01.01.2021 00:00:00', 'dd.MM.yyyy HH:mm:ss')
