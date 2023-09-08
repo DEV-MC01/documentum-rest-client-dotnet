@@ -627,7 +627,7 @@ namespace Emc.Documentum.Rest.DataModel
                         ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
                         if (primaryContentMeta == null)
                         {
-                            Console.WriteLine($"No primary content has been found for the document '{objectName}'.");
+                            Console.WriteLine($"WARN! No primary content has been found for the document '{objectName}'.");
                             docProcessed++;
                             continue;
                         }
@@ -639,7 +639,7 @@ namespace Emc.Documentum.Rest.DataModel
                         }
                         catch(Exception e) 
                         {
-                            Console.WriteLine("The following error has occurred during downloading a file for the document '{0}'\n{1}", objectName, e.ToString());
+                            Console.WriteLine("ERROR! The following error has occurred during downloading a file for the document '{0}'\n{1}", objectName, e.ToString());
                             docProcessed++;
                             continue;
                         }
@@ -657,10 +657,19 @@ namespace Emc.Documentum.Rest.DataModel
                             Directory.CreateDirectory(targetDirectory);
 
                         string targetPath = targetDirectory + Path.AltDirectorySeparatorChar + filename;
-                        File.Move(downloadedContentFile.FullName, targetPath);
-                        docProcessed++;
+                        try
+                        {
+                            File.Move(downloadedContentFile.FullName, targetPath);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("ERROR! The following error has occurred during moving downloaded file to the result directory '{0}'.\n{1}", targetPath, e.ToString());
+                            docProcessed++;
+                            continue;
+                        }
 
-                        Console.WriteLine("File '{0}' has been downloaded.", downloadedContentFile.Name);
+                        docProcessed++;
+                        Console.WriteLine("File '{0}' has been processed.", downloadedContentFile.Name);
                     }
 
                     if (totalResults != docProcessed) queryResult = queryResult.NextPage();
