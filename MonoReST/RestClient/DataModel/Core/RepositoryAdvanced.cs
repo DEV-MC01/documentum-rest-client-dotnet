@@ -9,6 +9,7 @@ using System.Runtime.Serialization;
 using System.Net.Http;
 using System.IO;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 
 namespace Emc.Documentum.Rest.DataModel
 {
@@ -600,14 +601,15 @@ namespace Emc.Documentum.Rest.DataModel
         /// <summary>
         /// Exports a file(s) to a target folder based on a qualifying DQL statement
         /// </summary>
-        /// <param name="query"></param>
-        /// <param name="folderName"></param>
-        private void ExportToFolder(string query, string folderName)
+        /// <param name="query">The query.</param>
+        /// <param name="folderName">Name of the folder.</param>
+        /// <param name="docTemplateToDownloadRenditions">The document template to download renditions.</param>
+        private void ExportToFolder(string query, string folderName, Regex docTemplateToDownloadRenditions = null)
         {
             Feed<PersistentObject> queryResult = ExecuteDQL<PersistentObject>(query, new FeedGetOptions() { ItemsPerPage = 100, IncludeTotal = true });
             if (queryResult != null && queryResult.Total > 0)
             {
-                Console.WriteLine("{0} file(s) have been found.", queryResult.Total);
+                Console.WriteLine("{0} document(s) have been found.", queryResult.Total);
 
                 int totalResults = queryResult.Total;
                 double totalPages = queryResult.PageCount;
@@ -621,55 +623,69 @@ namespace Emc.Documentum.Rest.DataModel
                         var objectName = obj.GetPropertyValue("object_name") as string ?? string.Empty;
                         var objectRevision = obj.GetPropertyValue("eif_revision") as string ?? string.Empty;
 
-                        SingleGetOptions options = new SingleGetOptions();
-                        options.SetQuery("media-url-policy", "local");
+                        Console.WriteLine("Document '{0}' is being processed...", objectName);
+
+                        SingleGetOptions singleGetOptions = new SingleGetOptions();
+                        singleGetOptions.SetQuery("media-url-policy", "local");
                         Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
-                        ContentMeta primaryContentMeta = doc.GetPrimaryContent(options);
-                        if (primaryContentMeta == null)
+
+                        if (docTemplateToDownloadRenditions == null || !docTemplateToDownloadRenditions.IsMatch(objectName))
                         {
-                            Console.WriteLine($"WARN! No primary content has been found for the document '{objectName}'.");
-                            docProcessed++;
-                            continue;
+                            Console.WriteLine("Attempting to download primary content only...");
+                            ContentMeta primaryContentMeta = doc.GetPrimaryContent(singleGetOptions);
+                            if (primaryContentMeta == null)
+                            {
+                                Console.WriteLine($"WARN! No primary content has been found for the document '{objectName}'.");
+                                docProcessed++;
+                                continue;
+                            }
+
+                            // download primary file
+                            try
+                            {
+                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
+                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("ERROR! The following error has occurred during downloading the primary file for the document '{0}'\n{1}", objectName, e.ToString());
+                                docProcessed++;
+                                continue;
+                            }
                         }
-
-                        FileInfo downloadedContentFile = null;
-                        try
+                        else
                         {
-                            downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
-                        }
-                        catch(Exception e) 
-                        {
-                            Console.WriteLine("ERROR! The following error has occurred during downloading a file for the document '{0}'\n{1}", objectName, e.ToString());
-                            docProcessed++;
-                            continue;
-                        }
+                            Console.WriteLine("Attempting to download primary content and renditions...");
+                            // download all renditions including primary file
+                            FeedGetOptions feedGetOptions = new FeedGetOptions() { Inline = true };
+                            feedGetOptions.SetQuery("media-url-policy", "local");
+                            Feed<ContentMeta> contents = doc.GetContents<ContentMeta>(feedGetOptions);
+                            List<Entry<ContentMeta>> entries = contents.Entries;
+                            Dictionary<string, int> extensionRenditionDict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                            try
+                            {
+                                foreach (var entry in entries)
+                                {
+                                    var downloadedContentFile = entry.Content.DownloadContentMediaFile();
 
-                        // string path = "c:/temp/case" + obj.getAttributeValue("r_folder_path").ToString();
-                        string filename = downloadedContentFile.Name;
+                                    if (!extensionRenditionDict.ContainsKey(downloadedContentFile.Extension)) extensionRenditionDict[downloadedContentFile.Extension] = 1;
+                                    string renditionIndex = extensionRenditionDict[downloadedContentFile.Extension] > 1 ? string.Format("_{0}", extensionRenditionDict[downloadedContentFile.Extension]) : string.Empty;
 
-                        string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
-                            ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim().TrimEnd('.')), !string.IsNullOrWhiteSpace(objectRevision)
-                                ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
-                            : string.Empty;
+                                    MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, string.Format("{0}{1}{2}", objectName, renditionIndex, downloadedContentFile.Extension));
 
-                        string targetDirectory = folderName == null ? Path.AltDirectorySeparatorChar + targetSubDirectory : folderName + Path.AltDirectorySeparatorChar + targetSubDirectory;
-                        if (!Directory.Exists(targetDirectory))
-                            Directory.CreateDirectory(targetDirectory);
-
-                        string targetPath = targetDirectory + Path.AltDirectorySeparatorChar + filename;
-                        try
-                        {
-                            File.Move(downloadedContentFile.FullName, targetPath);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("ERROR! The following error has occurred during moving downloaded file to the result directory '{0}'.\n{1}", targetPath, e.ToString());
-                            docProcessed++;
-                            continue;
+                                    extensionRenditionDict[downloadedContentFile.Extension]++;
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("ERROR! The following error has occurred during downloading renditions for the document '{0}'\n{1}", objectName, e.ToString());
+                                docProcessed++;
+                                continue;
+                            }
                         }
 
                         docProcessed++;
-                        Console.WriteLine("File '{0}' has been processed.", downloadedContentFile.Name);
+                        Console.WriteLine("Document '{0}' has been processed.", objectName);
                     }
 
                     if (totalResults != docProcessed) queryResult = queryResult.NextPage();
@@ -682,12 +698,39 @@ namespace Emc.Documentum.Rest.DataModel
             }
         }
 
+        private static void MoveFileToPermanentStorage(string folderName, string objectName, string objectRevision, FileInfo downloadedContentFile, string renameTargetFile = null)
+        {
+            string filename = downloadedContentFile.Name;
+
+            string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
+                ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim().TrimEnd('.')), !string.IsNullOrWhiteSpace(objectRevision)
+                    ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
+                : string.Empty;
+
+            string targetDirectory = folderName == null ? Path.AltDirectorySeparatorChar + targetSubDirectory : folderName + Path.AltDirectorySeparatorChar + targetSubDirectory;
+            if (!Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
+
+            string targetPath = targetDirectory + Path.AltDirectorySeparatorChar + (!string.IsNullOrWhiteSpace(renameTargetFile) ? renameTargetFile : filename);
+
+            try
+            {
+                if (File.Exists(targetPath)) File.Delete(targetPath);
+                File.Move(downloadedContentFile.FullName, targetPath);
+                Console.WriteLine("File '{0}' has been downloaded.", Path.GetFileName(targetPath));
+            }
+            catch (Exception e)
+            {
+                throw new Exception(string.Format("ERROR! An error has occurred during moving downloaded file to the result directory '{0}'.", targetPath), e);
+            }
+        }
+
         /// <summary>
         /// Gets a list of documents by object IDs and downloads the documents to the target folder.
         /// </summary>
-        /// <param name="objectIDs"></param>
-        /// <param name="targetFolder"></param>
-        public void ExportDocuments(string objectIDs, string targetFolder)
+        /// <param name="objectIDs">The object i ds.</param>
+        /// <param name="targetFolder">The target folder.</param>
+        /// <param name="docTemplateToDownloadRenditions">The document template to download renditions.</param>
+        public void ExportDocuments(string objectIDs, string targetFolder, Regex docTemplateToDownloadRenditions = null)
         {
             if (string.IsNullOrEmpty(objectIDs)) Console.WriteLine("No documents to be downloaded have been found.");
 
@@ -695,7 +738,7 @@ namespace Emc.Documentum.Rest.DataModel
             string query = String.Format("select dm_document.r_object_id, dm_document.object_name, eifx_deliverable_doc.eif_revision from dm_document left join eifx_deliverable_doc on eifx_deliverable_doc.r_object_id = dm_document.r_object_id where dm_document.r_object_id IN({0})", objectIDs);
             Console.WriteLine("Export documents to the folder " + targetFolder);
             Console.WriteLine("Final query: \n" + query);
-            ExportToFolder(query, targetFolder);
+            ExportToFolder(query, targetFolder, docTemplateToDownloadRenditions);
         }
 
         /// <summary>

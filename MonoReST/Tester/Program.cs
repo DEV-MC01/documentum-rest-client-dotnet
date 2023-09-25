@@ -9,6 +9,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Net;
 using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -49,6 +50,7 @@ namespace Emc.Documentum.Rest.Test
             getFiles = Boolean.Parse(_currentConfigProfile["getFiles"]);
             getDelta = Boolean.Parse(_currentConfigProfile["getDelta"]);
             timeStampFilePath = _currentConfigProfile["timeStampfilePath"];
+            var docTemplateToDownloadRenditions = _currentConfigProfile["docTemplateToDownloadRenditions"];
             var saveLogFile = Boolean.Parse(_currentConfigProfile["saveLogFile"]);
             var logLevel = _currentConfigProfile["logLevel"];
             var dqlSections = _currentConfigProfile.AllKeys.Where(k => k.StartsWith("dql_"));
@@ -75,7 +77,7 @@ namespace Emc.Documentum.Rest.Test
                     Console.WriteLine("Section '{0}' is being processed...", dqlSection);
                     var documentArea = dqlSection.Replace("dql_", "");
                     var objectIds = ExportDocumentMetadata(_currentConfigProfile[dqlSection], documentArea + "_", logLevel);
-                    if (getFiles) useCaseTests.Start(documentArea, objectIds);
+                    if (getFiles) useCaseTests.Start(documentArea, !string.IsNullOrEmpty(docTemplateToDownloadRenditions) ? new Regex(docTemplateToDownloadRenditions) : null, objectIds);
                     Console.WriteLine("Section '{0}' has been processed.", dqlSection);
                 }
 

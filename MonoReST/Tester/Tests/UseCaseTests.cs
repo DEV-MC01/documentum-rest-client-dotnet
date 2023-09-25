@@ -9,6 +9,7 @@ using System.Text;
 using System.IO;
 using System.Collections.Specialized;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
 
 namespace Emc.Documentum.Rest.Test
 {
@@ -328,7 +329,7 @@ namespace Emc.Documentum.Rest.Test
             return homeDoc.GetRepository<Repository>(repositoryName);
         }
 
-        public void Start(string testSubDirectory, params string[] objectIds)
+        public void Start(string testSubDirectory, Regex docTemplateToDownloadRenditions, params string[] objectIds)
         {
             Console.WriteLine("Fetching documents from Capital Project...");
 
@@ -362,7 +363,7 @@ namespace Emc.Documentum.Rest.Test
             for (int i = 0; i < objectIds.Length; i += chunkSize)
             {
                 var chunk = objectIds.Skip(i).Take(chunkSize); // use a chunk to avoid a potential UriTooLong exception as objectIds will be a part of the query string
-                CurrentRepository.ExportDocuments(string.Join(",", chunk), testDirectory + Path.DirectorySeparatorChar);
+                CurrentRepository.ExportDocuments(string.Join(",", chunk), testDirectory + Path.DirectorySeparatorChar, docTemplateToDownloadRenditions);
             }
 
             //foreach (String key in restTests)
