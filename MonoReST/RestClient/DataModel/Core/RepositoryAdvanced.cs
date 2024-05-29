@@ -643,8 +643,9 @@ namespace Emc.Documentum.Rest.DataModel
                             // download primary file
                             try
                             {
-                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile();
-                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile);
+                                var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
+                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(fileName);
+                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, !string.IsNullOrEmpty(fileName) ? fileName : null);
                             }
                             catch (Exception e)
                             {
@@ -666,14 +667,21 @@ namespace Emc.Documentum.Rest.DataModel
                             {
                                 foreach (var entry in entries)
                                 {
-                                    var downloadedContentFile = entry.Content.DownloadContentMediaFile();
+                                    var contentObjectId = entry.Content.GetPropertyString("r_object_id");
+                                    var fileName = GetOriginalFileName(contentObjectId);
 
-                                    if (!extensionRenditionDict.ContainsKey(downloadedContentFile.Extension)) extensionRenditionDict[downloadedContentFile.Extension] = 1;
-                                    string renditionIndex = extensionRenditionDict[downloadedContentFile.Extension] > 1 ? string.Format("_{0}", extensionRenditionDict[downloadedContentFile.Extension]) : string.Empty;
+                                    var downloadedContentFile = entry.Content.DownloadContentMediaFile(fileName);
 
-                                    MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, string.Format("{0}{1}{2}", objectName, renditionIndex, downloadedContentFile.Extension));
+                                    string renditionIndex = string.Empty;
+                                    if (string.IsNullOrEmpty(fileName))
+                                    {
+                                        if (!extensionRenditionDict.ContainsKey(downloadedContentFile.Extension)) extensionRenditionDict[downloadedContentFile.Extension] = 1;
+                                        renditionIndex = extensionRenditionDict[downloadedContentFile.Extension] > 1 ? string.Format("_{0}", extensionRenditionDict[downloadedContentFile.Extension]) : string.Empty;
+                                    }
 
-                                    extensionRenditionDict[downloadedContentFile.Extension]++;
+                                    MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, !string.IsNullOrEmpty(fileName) ? fileName : string.Format("{0}{1}{2}", objectName, renditionIndex, downloadedContentFile.Extension));
+
+                                    if (string.IsNullOrEmpty(fileName)) extensionRenditionDict[downloadedContentFile.Extension]++;
                                 }
                             }
                             catch (Exception e)
@@ -696,6 +704,18 @@ namespace Emc.Documentum.Rest.DataModel
             {
                 Console.WriteLine("NORESULTSTOFOLDER: Query returned no results - " + query);
             }
+        }
+
+        private string GetOriginalFileName(string objectId)
+        {
+            if (string.IsNullOrEmpty(objectId)) return string.Empty;
+
+            Feed<PersistentObject> contentObjects = ExecuteDQL<PersistentObject>($"select set_file from dmr_content where r_object_id='{objectId}'", new FeedGetOptions() { IncludeTotal = false });
+
+            var entry = contentObjects.Entries.FirstOrDefault();
+            if (entry == null) return string.Empty;
+
+            return Path.GetFileName(entry.Content.GetPropertyString("set_file"));
         }
 
         private static void MoveFileToPermanentStorage(string folderName, string objectName, string objectRevision, FileInfo downloadedContentFile, string renameTargetFile = null)
