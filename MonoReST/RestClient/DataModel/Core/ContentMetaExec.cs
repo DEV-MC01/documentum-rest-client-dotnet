@@ -25,20 +25,20 @@ namespace Emc.Documentum.Rest.DataModel
             return Client.GetSingleton<Document>(this.Links, LinkRelations.PARENT.Rel, options);
         }
 
-		/// <summary>
-		/// Download the content media of this content to a local file
-		/// </summary>
-		/// <param name="explicitFileName">Explicitly specified name of the file.</param>
-		/// <returns>
-		/// Returns System FileInfo
-		/// </returns>
-		/// <exception cref="System.Exception">
-		/// Stream came back null. This is normally caused by an unreachable ACS Server (DNS problem or Method Server DOWN). ACS URL is: " + contentMediaUri
-		/// </exception>
-		public FileInfo DownloadContentMediaFile(string explicitFileName = null)
+        /// <summary>
+        /// Download the content media of this content to a local file
+        /// </summary>
+        /// <param name="explicitFileName">Explicitly specified name of the file.</param>
+        /// <returns>
+        /// Returns System FileInfo
+        /// </returns>
+        /// <exception cref="System.Exception">
+        /// Stream came back null. This is normally caused by an unreachable ACS Server (DNS problem or Method Server DOWN). ACS URL is: " + contentMediaUri
+        /// </exception>
+        public FileInfo DownloadContentMediaFile(string explicitFileName = null)
         {
             string contentMediaUri = LinkRelations.FindLinkAsString(this.Links, LinkRelations.CONTENT_MEDIA.Rel);
-            string fileName = string.IsNullOrEmpty(explicitFileName) ? (string)GetPropertyValue("object_name") : explicitFileName; 
+            string fileName = string.IsNullOrEmpty(explicitFileName) ? (string)GetPropertyValue("object_name") : explicitFileName;
             string dosExtension = (string)GetPropertyValue("dos_extension");
             if (String.IsNullOrEmpty(fileName))
             {
@@ -52,10 +52,15 @@ namespace Emc.Documentum.Rest.DataModel
             {
                 // The extension is already on the object name, do not append anthing
                 fileExtension = "";
-            } else {
-                if(dosExtension != null && !dosExtension.Trim().Equals("")) {
+            }
+            else
+            {
+                if (dosExtension != null && !dosExtension.Trim().Equals(""))
+                {
                     fileExtension = dosExtension;
-                } else {
+                }
+                else
+                {
                     fileExtension = ObjectUtil.getDosExtensionFromFormat(GetPropertyValue("full_format").ToString());
                 }
             }

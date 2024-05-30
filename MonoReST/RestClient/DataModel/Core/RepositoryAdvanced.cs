@@ -643,9 +643,9 @@ namespace Emc.Documentum.Rest.DataModel
                             // download primary file
                             try
                             {
-                                var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
-                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(fileName);
-                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, !string.IsNullOrEmpty(fileName) ? fileName : null);
+                                //var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
+                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(/*fileName*/);
+                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile/*, !string.IsNullOrEmpty(fileName) ? fileName : null*/);
                             }
                             catch (Exception e)
                             {
@@ -667,7 +667,8 @@ namespace Emc.Documentum.Rest.DataModel
                             {
                                 foreach (var entry in entries)
                                 {
-                                    var contentObjectId = entry.Content.GetPropertyString("r_object_id");
+                                    var isPdfFormat = string.Equals(ObjectUtil.getDosExtensionFromFormat(entry.Content.GetPropertyString("full_format")), "pdf", StringComparison.OrdinalIgnoreCase);
+                                    var contentObjectId = !isPdfFormat ? entry.Content.GetPropertyString("r_object_id") : string.Empty; // pdf file is usually a master file and we need to name it according to the Document's name
                                     var fileName = GetOriginalFileName(contentObjectId);
 
                                     var downloadedContentFile = entry.Content.DownloadContentMediaFile(fileName);
