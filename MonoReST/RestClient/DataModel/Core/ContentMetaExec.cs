@@ -1,15 +1,8 @@
 ﻿using Emc.Documentum.Rest.Net;
 using Emc.Documentum.Rest.Http.Utility;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
-using System.Collections.Specialized;
-using System.Runtime.InteropServices;
 
 namespace Emc.Documentum.Rest.DataModel
 {
@@ -35,7 +28,7 @@ namespace Emc.Documentum.Rest.DataModel
         /// <exception cref="System.Exception">
         /// Stream came back null. This is normally caused by an unreachable ACS Server (DNS problem or Method Server DOWN). ACS URL is: " + contentMediaUri
         /// </exception>
-        public FileInfo DownloadContentMediaFile(string explicitFileName = null)
+        public FileInfo DownloadContentMediaFile(string explicitFileName = null, string explicitFileDirectoryPath = null)
         {
             string contentMediaUri = LinkRelations.FindLinkAsString(this.Links, LinkRelations.CONTENT_MEDIA.Rel);
             string fileName = string.IsNullOrEmpty(explicitFileName) ? (string)GetPropertyValue("object_name") : explicitFileName;
@@ -70,7 +63,15 @@ namespace Emc.Documentum.Rest.DataModel
             // Ensure file extension is not already there
             try
             {
-                fullPath = Path.Combine(Path.GetTempPath(), fileName + (string.IsNullOrWhiteSpace(fileExtension) ? "" : ".") + fileExtension);
+                string directoryPath = Path.GetTempPath();
+                if (!string.IsNullOrWhiteSpace(explicitFileDirectoryPath))
+                {
+                    if (!Directory.Exists(explicitFileDirectoryPath)) Directory.CreateDirectory(explicitFileDirectoryPath);
+
+                    directoryPath = explicitFileDirectoryPath;
+                }
+
+                fullPath = Path.Combine(directoryPath, fileName + (string.IsNullOrWhiteSpace(fileExtension) ? "" : ".") + fileExtension);
             }
             catch (Exception e)
             {

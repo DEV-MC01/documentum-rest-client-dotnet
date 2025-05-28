@@ -644,8 +644,10 @@ namespace Emc.Documentum.Rest.DataModel
                             try
                             {
                                 //var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
-                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(/*fileName*/);
-                                MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile/*, !string.IsNullOrEmpty(fileName) ? fileName : null*/);
+                                var targetDirectory = GetPermanentStorageDocumentDirectory(folderName, objectName, objectRevision);
+                                Console.WriteLine("Downloading document '{0}' to the folder '{1}'...", objectName, targetDirectory);
+                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(/*fileName*/ null, targetDirectory);
+                                //MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile/*, !string.IsNullOrEmpty(fileName) ? fileName : null*/);
                             }
                             catch (Exception e)
                             {
@@ -719,19 +721,32 @@ namespace Emc.Documentum.Rest.DataModel
             return Path.GetFileName(entry.Content.GetPropertyString("set_file"));
         }
 
+        private static string GetPermanentStorageDocumentDirectory(string folderName, string objectName, string objectRevision)
+        {
+            string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
+               ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim().TrimEnd('.')), !string.IsNullOrWhiteSpace(objectRevision)
+                   ? Path.DirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
+               : string.Empty;
+
+            string targetDirectory = folderName == null ? Path.DirectorySeparatorChar + targetSubDirectory : folderName.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar + targetSubDirectory;
+            if (!Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
+
+            return targetDirectory;
+        }
+
         private static void MoveFileToPermanentStorage(string folderName, string objectName, string objectRevision, FileInfo downloadedContentFile, string renameTargetFile = null)
         {
             string filename = downloadedContentFile.Name;
 
             string targetSubDirectory = !string.IsNullOrWhiteSpace(objectName)
                 ? string.Format("{0}{1}", ObjectUtil.getSafeFileName(objectName.Trim().TrimEnd('.')), !string.IsNullOrWhiteSpace(objectRevision)
-                    ? Path.AltDirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
+                    ? Path.DirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
                 : string.Empty;
 
-            string targetDirectory = folderName == null ? Path.AltDirectorySeparatorChar + targetSubDirectory : folderName + Path.AltDirectorySeparatorChar + targetSubDirectory;
+            string targetDirectory = folderName == null ? Path.DirectorySeparatorChar + targetSubDirectory : folderName + Path.DirectorySeparatorChar + targetSubDirectory;
             if (!Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
 
-            string targetPath = targetDirectory + Path.AltDirectorySeparatorChar + (!string.IsNullOrWhiteSpace(renameTargetFile) ? renameTargetFile : filename);
+            string targetPath = targetDirectory + Path.DirectorySeparatorChar + (!string.IsNullOrWhiteSpace(renameTargetFile) ? renameTargetFile : filename);
 
             try
             {

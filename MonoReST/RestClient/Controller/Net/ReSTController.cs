@@ -347,8 +347,11 @@ namespace Emc.Documentum.Rest.Net
                 long? requestSize = request.Content == null ? 0L : request.Content.Headers.ContentLength;
                 long? contentSize = message.Content == null ? 0L : message.Content.Headers.ContentLength;
                 LogPerformance(time, request.Method.ToString(), uri, requestSize == null ? 0L : requestSize.Value, contentSize == null ? 0L : contentSize.Value);
-                
+
+
+                WriteToLog(LogLevel.DEBUG, this.GetType().Name, "Reading response body...", (Exception)null);
                 stream = message.Content.ReadAsStreamAsync().Result;
+                WriteToLog(LogLevel.DEBUG, this.GetType().Name, "Response body has been read.", (Exception)null);
             }
             catch (Exception e)
             {
