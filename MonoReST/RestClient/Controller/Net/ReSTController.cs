@@ -326,7 +326,10 @@ namespace Emc.Documentum.Rest.Net
         /// </summary>
         /// <param name="uri">Request URI</param>
         /// <param name="useAuthentication">Indicates whether to authenticate the request</param>
-        /// <returns>Response body as stream</returns>
+        /// <returns>
+        /// Response body as stream
+        /// </returns>
+        /// <exception cref="System.Exception">A timeout occurred waiting on a response from request: " + uri</exception>
         public Stream GetRaw(string uri, bool useAuthentication)
         {
             Stream stream = null;
@@ -342,13 +345,14 @@ namespace Emc.Documentum.Rest.Net
                 HttpCompletionOption option = HttpCompletionOption.ResponseContentRead;
                 Task<HttpResponseMessage> response = _httpClient.SendAsync(request, option);
                 long tStart = DateTime.Now.Ticks;
-                HttpResponseMessage message = response.Result; 
+                HttpResponseMessage message = response.Result;
                 long time = ((DateTime.Now.Ticks - tStart) / TimeSpan.TicksPerMillisecond);
                 long? requestSize = request.Content == null ? 0L : request.Content.Headers.ContentLength;
                 long? contentSize = message.Content == null ? 0L : message.Content.Headers.ContentLength;
                 LogPerformance(time, request.Method.ToString(), uri, requestSize == null ? 0L : requestSize.Value, contentSize == null ? 0L : contentSize.Value);
 
-
+                var contentType = message.Content.Headers.ContentType?.MediaType;
+                WriteToLog(LogLevel.DEBUG, this.GetType().Name, string.Format("Content Type: {0}", contentType), (Exception)null);
                 WriteToLog(LogLevel.DEBUG, this.GetType().Name, "Reading response body...", (Exception)null);
                 stream = message.Content.ReadAsStreamAsync().Result;
                 WriteToLog(LogLevel.DEBUG, this.GetType().Name, "Response body has been read.", (Exception)null);
@@ -356,9 +360,9 @@ namespace Emc.Documentum.Rest.Net
             catch (Exception e)
             {
                 WriteToLog(LogLevel.ERROR, this.GetType().Name, "Error URI: " + uri, e);
-                if(e.InnerException is TaskCanceledException)
+                if (e.InnerException is TaskCanceledException)
                 {
-                    throw new Exception("A timeout occurred waiting on a response from request: " + uri,e.InnerException);
+                    throw new Exception("A timeout occurred waiting on a response from request: " + uri, e.InnerException);
                 }
             }
             return stream;
@@ -368,7 +372,9 @@ namespace Emc.Documentum.Rest.Net
         /// Does a raw get using a URI and returns the result as a Stream.
         /// </summary>
         /// <param name="uri">Request URI</param>
-        /// <returns>Response body as stream</returns>
+        /// <returns>
+        /// Response body as stream
+        /// </returns>
         public Stream GetRaw(string uri)
         {
             return GetRaw(uri, true);

@@ -743,14 +743,19 @@ namespace Emc.Documentum.Rest.DataModel
                     ? Path.DirectorySeparatorChar + ObjectUtil.getSafeFileName(objectRevision.Trim().TrimEnd('.')) : string.Empty)
                 : string.Empty;
 
-            string targetDirectory = folderName == null ? Path.DirectorySeparatorChar + targetSubDirectory : folderName + Path.DirectorySeparatorChar + targetSubDirectory;
+            string targetDirectory = folderName == null ? Path.DirectorySeparatorChar + targetSubDirectory : folderName.TrimEnd('\\', '/') + Path.DirectorySeparatorChar + targetSubDirectory;
             if (!Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
 
             string targetPath = targetDirectory + Path.DirectorySeparatorChar + (!string.IsNullOrWhiteSpace(renameTargetFile) ? renameTargetFile : filename);
+            if (!string.Equals(Path.GetExtension(targetPath), downloadedContentFile.Extension, StringComparison.OrdinalIgnoreCase))
+            {
+                targetPath = string.Format("{0}{1}", targetPath, downloadedContentFile.Extension);
+            }
 
             try
             {
                 if (File.Exists(targetPath)) File.Delete(targetPath);
+                Console.WriteLine("Moving file from temp '{0}' to permanent '{1}'...", downloadedContentFile.FullName, targetPath);
                 File.Move(downloadedContentFile.FullName, targetPath);
                 Console.WriteLine("File '{0}' has been downloaded.", Path.GetFileName(targetPath));
             }
