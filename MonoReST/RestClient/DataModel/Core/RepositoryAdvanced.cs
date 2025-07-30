@@ -622,81 +622,91 @@ namespace Emc.Documentum.Rest.DataModel
                     {
                         var objectName = obj.GetPropertyValue("object_name") as string ?? string.Empty;
                         var objectRevision = obj.GetPropertyValue("eif_revision") as string ?? string.Empty;
+                        var objectId = obj.GetPropertyValue("r_object_id") as string ?? string.Empty;
 
                         Console.WriteLine("Document '{0}' is being processed...", objectName);
 
                         SingleGetOptions singleGetOptions = new SingleGetOptions();
                         singleGetOptions.SetQuery("media-url-policy", "local");
-                        Document doc = GetSysObjectById<Document>(obj.GetPropertyValue("r_object_id").ToString());// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
+                        Console.WriteLine("Loading the document's metadata by r_object_id '{0}'...", objectId);
+                        Document doc = GetSysObjectById<Document>(objectId);// getDocumentByQualification("dm_document where r_object_id='" + obj.getAttributeValue("r_object_id") + "'", null);
 
-                        if (docTemplateToDownloadRenditions == null || !docTemplateToDownloadRenditions.IsMatch(objectName))
+                        if (doc != null)
                         {
-                            Console.WriteLine("Attempting to download primary content only...");
-                            ContentMeta primaryContentMeta = doc.GetPrimaryContent(singleGetOptions);
-                            if (primaryContentMeta == null)
+                            if (docTemplateToDownloadRenditions == null || !docTemplateToDownloadRenditions.IsMatch(objectName))
                             {
-                                Console.WriteLine($"WARN! No primary content has been found for the document '{objectName}'.");
-                                docProcessed++;
-                                continue;
+                                Console.WriteLine("Attempting to download primary content only...");
+                                ContentMeta primaryContentMeta = doc.GetPrimaryContent(singleGetOptions);
+                                if (primaryContentMeta == null)
+                                {
+                                    Console.WriteLine($"WARN! No primary content has been found for the document '{objectName}'.");
+                                    docProcessed++;
+                                    continue;
+                                }
+
+                                // download primary file
+                                try
+                                {
+                                    //var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
+                                    var targetDirectory = GetPermanentStorageDocumentDirectory(folderName, objectName, objectRevision);
+                                    Console.WriteLine("Downloading document '{0}' to the folder '{1}'...", objectName, targetDirectory);
+                                    var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(/*fileName*/ null, targetDirectory);
+                                    //MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile/*, !string.IsNullOrEmpty(fileName) ? fileName : null*/);
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine("ERROR! The following error has occurred during downloading the primary file for the document '{0}'\n{1}", objectName, e.ToString());
+                                    docProcessed++;
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("Attempting to download primary content and renditions...");
+                                // download all renditions including primary file
+                                FeedGetOptions feedGetOptions = new FeedGetOptions() { Inline = true };
+                                feedGetOptions.SetQuery("media-url-policy", "local");
+                                Feed<ContentMeta> contents = doc.GetContents<ContentMeta>(feedGetOptions);
+                                List<Entry<ContentMeta>> entries = contents.Entries;
+                                Dictionary<string, int> extensionRenditionDict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                                try
+                                {
+                                    foreach (var entry in entries)
+                                    {
+                                        var isPdfFormat = string.Equals(ObjectUtil.getDosExtensionFromFormat(entry.Content.GetPropertyString("full_format")), "pdf", StringComparison.OrdinalIgnoreCase);
+                                        var contentObjectId = !isPdfFormat ? entry.Content.GetPropertyString("r_object_id") : string.Empty; // pdf file is usually a master file and we need to name it according to the Document's name
+                                        var fileName = GetOriginalFileName(contentObjectId);
+
+                                        var downloadedContentFile = entry.Content.DownloadContentMediaFile(fileName);
+
+                                        string renditionIndex = string.Empty;
+                                        if (string.IsNullOrEmpty(fileName))
+                                        {
+                                            if (!extensionRenditionDict.ContainsKey(downloadedContentFile.Extension)) extensionRenditionDict[downloadedContentFile.Extension] = 1;
+                                            renditionIndex = extensionRenditionDict[downloadedContentFile.Extension] > 1 ? string.Format("_{0}", extensionRenditionDict[downloadedContentFile.Extension]) : string.Empty;
+                                        }
+
+                                        MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, !string.IsNullOrEmpty(fileName) ? fileName : string.Format("{0}{1}{2}", objectName, renditionIndex, downloadedContentFile.Extension));
+
+                                        if (string.IsNullOrEmpty(fileName)) extensionRenditionDict[downloadedContentFile.Extension]++;
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine("ERROR! The following error has occurred during downloading renditions for the document '{0}'\n{1}", objectName, e.ToString());
+                                    docProcessed++;
+                                    continue;
+                                }
                             }
 
-                            // download primary file
-                            try
-                            {
-                                //var fileName = GetOriginalFileName(primaryContentMeta.GetPropertyString("r_object_id"));
-                                var targetDirectory = GetPermanentStorageDocumentDirectory(folderName, objectName, objectRevision);
-                                Console.WriteLine("Downloading document '{0}' to the folder '{1}'...", objectName, targetDirectory);
-                                var downloadedContentFile = primaryContentMeta.DownloadContentMediaFile(/*fileName*/ null, targetDirectory);
-                                //MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile/*, !string.IsNullOrEmpty(fileName) ? fileName : null*/);
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine("ERROR! The following error has occurred during downloading the primary file for the document '{0}'\n{1}", objectName, e.ToString());
-                                docProcessed++;
-                                continue;
-                            }
+                            Console.WriteLine("Document '{0}' has been processed.", objectName);
                         }
                         else
                         {
-                            Console.WriteLine("Attempting to download primary content and renditions...");
-                            // download all renditions including primary file
-                            FeedGetOptions feedGetOptions = new FeedGetOptions() { Inline = true };
-                            feedGetOptions.SetQuery("media-url-policy", "local");
-                            Feed<ContentMeta> contents = doc.GetContents<ContentMeta>(feedGetOptions);
-                            List<Entry<ContentMeta>> entries = contents.Entries;
-                            Dictionary<string, int> extensionRenditionDict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                            try
-                            {
-                                foreach (var entry in entries)
-                                {
-                                    var isPdfFormat = string.Equals(ObjectUtil.getDosExtensionFromFormat(entry.Content.GetPropertyString("full_format")), "pdf", StringComparison.OrdinalIgnoreCase);
-                                    var contentObjectId = !isPdfFormat ? entry.Content.GetPropertyString("r_object_id") : string.Empty; // pdf file is usually a master file and we need to name it according to the Document's name
-                                    var fileName = GetOriginalFileName(contentObjectId);
-
-                                    var downloadedContentFile = entry.Content.DownloadContentMediaFile(fileName);
-
-                                    string renditionIndex = string.Empty;
-                                    if (string.IsNullOrEmpty(fileName))
-                                    {
-                                        if (!extensionRenditionDict.ContainsKey(downloadedContentFile.Extension)) extensionRenditionDict[downloadedContentFile.Extension] = 1;
-                                        renditionIndex = extensionRenditionDict[downloadedContentFile.Extension] > 1 ? string.Format("_{0}", extensionRenditionDict[downloadedContentFile.Extension]) : string.Empty;
-                                    }
-
-                                    MoveFileToPermanentStorage(folderName, objectName, objectRevision, downloadedContentFile, !string.IsNullOrEmpty(fileName) ? fileName : string.Format("{0}{1}{2}", objectName, renditionIndex, downloadedContentFile.Extension));
-
-                                    if (string.IsNullOrEmpty(fileName)) extensionRenditionDict[downloadedContentFile.Extension]++;
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                Console.WriteLine("ERROR! The following error has occurred during downloading renditions for the document '{0}'\n{1}", objectName, e.ToString());
-                                docProcessed++;
-                                continue;
-                            }
+                            Console.WriteLine("Document '{0}' could not be found at CP by r_object_id '{1}'.", objectName, objectId);
                         }
 
                         docProcessed++;
-                        Console.WriteLine("Document '{0}' has been processed.", objectName);
                     }
 
                     if (totalResults != docProcessed) queryResult = queryResult.NextPage();
